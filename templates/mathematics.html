@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Mathematics | Mathematical Derivations{% endblock %}
+{% block header_title %}Mathematical Foundations & Formula Derivations{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-calculator icon-primary"></i> 1. Time Series & Stationarity Theory</h3>
+    </div>
+    <div class="card-body">
+        <p>A time series is a sequence of observations $Y_1, Y_2, \dots, Y_t$ ordered by time.</p>
+        
+        <h4 class="mt-3">Stationarity Conditions</h4>
+        <ul class="styled-list">
+            <li><i class="fa-solid fa-check"></i> <strong>Constant Mean:</strong> $\mathbb{E}[Y_t] = \mu \quad \forall t$</li>
+            <li><i class="fa-solid fa-check"></i> <strong>Constant Variance:</strong> $\text{Var}(Y_t) = \sigma^2 < \infty \quad \forall t$</li>
+            <li><i class="fa-solid fa-check"></i> <strong>Autocovariance:</strong> $\text{Cov}(Y_t, Y_{t-k}) = \gamma(k) \quad \forall t, k$</li>
+        </ul>
+
+        <h4 class="mt-3">Differencing Operator ($\Delta$)</h4>
+        <div class="formula-box text-center">
+            $$\Delta Y_t = Y_t - Y_{t-1}$$
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-square-root-variable icon-primary"></i> 2. $\text{ARIMA}(p,d,q)$ Model Equations</h3>
+    </div>
+    <div class="card-body">
+        <div class="grid-2col my-3">
+            <div class="card bg-card-dark">
+                <div class="card-body">
+                    <h4>Autoregressive Component ($\text{AR}(p)$)</h4>
+                    $$\Delta^d Y_t = c + \sum_{i=1}^p \phi_i \Delta^d Y_{t-i} + \varepsilon_t$$
+                </div>
+            </div>
+            <div class="card bg-card-dark">
+                <div class="card-body">
+                    <h4>Moving Average Component ($\text{MA}(q)$)</h4>
+                    $$\Delta^d Y_t = c + \varepsilon_t + \sum_{j=1}^q \theta_j \varepsilon_{t-j}$$
+                </div>
+            </div>
+        </div>
+
+        <h4>Combined $\text{ARIMA}(1,1,1)$ Equation</h4>
+        <div class="formula-box text-center">
+            $$\Delta Y_t = c + \phi_1 \Delta Y_{t-1} + \varepsilon_t + \theta_1 \varepsilon_{t-1}$$
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-chart-line icon-primary"></i> 3. Inventory Optimization Formulas</h3>
+    </div>
+    <div class="card-body">
+        <div class="grid-2col my-3">
+            <div class="formula-box text-center">
+                $$\mu = \frac{1}{n} \sum_{i=1}^n Y_i$$
+            </div>
+            <div class="formula-box text-center">
+                $$\sigma = \sqrt{\frac{1}{n-1} \sum_{i=1}^n (Y_i - \mu)^2}$$
+            </div>
+        </div>
+
+        <h4>Safety Stock ($SS$) Formula</h4>
+        <div class="formula-box text-center">
+            $$SS = Z \times \sigma \times \sqrt{L}$$
+        </div>
+
+        <h4>Reorder Point ($ROP$) Formula</h4>
+        <div class="formula-box text-center">
+            $$ROP = D_L + SS = (D_{daily} \times L) + (Z \times \sigma \times \sqrt{L})$$
+        </div>
+    </div>
+</div>
+{% endblock %}

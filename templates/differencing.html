@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Differencing - SmartInventory{% endblock %}
+{% block breadcrumb %}Differencing{% endblock %}
+
+{% block content %}
+{% if current_category %}
+<div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
+    <i class="fa-solid fa-filter"></i>
+    <span>
+        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
+    </span>
+</div>
+{% endif %}
+
+<div class="page-header fade-in">
+  <h1 class="page-title">∆ Differencing</h1>
+  <p class="page-subtitle">Transform non-stationary series to stationary by applying first-order differencing.</p>
+</div>
+
+<!-- Math Explanation -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="card fade-in fade-in-1">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-ruler-combined icon-primary"></i> Mathematical Definition of Differencing</span>
+      </div>
+      <div class="card-body">
+        <div class="math-box mb-3">
+          <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> First-Order Difference</div>
+          <div class="math-formula">$$Y'(t) = Y(t) - Y(t-1) = \Delta Y_t$$</div>
+          <div class="math-note">
+            This operation removes a <strong>linear trend</strong> from the series. If the series still shows non-stationarity, a second difference is applied.
+          </div>
+        </div>
+
+        <div class="math-box mb-3">
+          <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> Backshift Operator Notation</div>
+          <div class="math-formula">$$\Delta^d Y_t = (1 - B)^d Y_t$$</div>
+          <div class="math-note">
+            <strong>B</strong> = Backshift operator: $B^k Y_t = Y_{t-k}$<br/>
+            <strong>d</strong> = Number of times differenced (the "I" in ARIMA)<br/>
+            <strong>d = 1:</strong> $\Delta Y_t = Y_t - Y_{t-1}$<br/>
+            <strong>d = 2:</strong> $\Delta^2 Y_t = Y_t - 2Y_{t-1} + Y_{t-2}$
+          </div>
+        </div>
+
+        <div class="math-box">
+          <div class="math-title"><i class="fa-solid fa-lightbulb icon-primary"></i> Why Difference?</div>
+          <div class="math-note">
+            ARIMA requires a <strong>stationary</strong> series (constant mean &amp; variance). Most real demand data has trend or drift. Differencing removes deterministic trends:
+            <br/><br/>
+            If $Y_t = \mu + Y_{t-1} + \varepsilon_t$ (random walk with drift),<br/>
+            then $\Delta Y_t = \mu + \varepsilon_t$ → <strong>stationary!</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <!-- Suggested d -->
+    <div class="card mb-4 fade-in fade-in-1">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-bullseye icon-primary"></i> Suggested Differencing Order</span>
+      </div>
+      <div class="card-body" style="text-align:center;padding:2rem;">
+        <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;">Recommended value of d</div>
+        <div class="order-badge" style="font-size:2.5rem;padding:0.5rem 2rem;justify-content:center;">d = {{ d }}</div>
+        <p style="color:var(--text-secondary);font-size:0.8rem;margin-top:1rem;line-height:1.7;">
+          The ADF test was applied iteratively. After <strong>{{ d }}</strong>
+          {% if d == 1 %}difference{% else %}differences{% endif %},
+          the series becomes stationary (p-value &lt; 0.05).
+        </p>
+      </div>
+    </div>
+
+    <!-- ADF Steps -->
+    <div class="card fade-in fade-in-2">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-chart-column icon-primary"></i> ADF Test - Iterative Steps</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="table-dark-custom">
+          <thead>
+            <tr><th>Step (d)</th><th>p-value</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            {% for step in diff_info.steps %}
+            <tr>
+              <td>d = {{ step.d }}</td>
+              <td class="mono">{{ step.adf.p_value }}</td>
+              <td>
+                {% if step.adf.is_stationary %}
+                <span class="verdict-stationary" style="font-size:0.7rem;"><i class="fa-solid fa-circle-check icon-primary"></i> Stationary</span>
+                {% else %}
+                <span class="verdict-nonstationary" style="font-size:0.7rem;"><i class="fa-solid fa-triangle-exclamation icon-primary"></i> Non-Stationary</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Plot -->
+<div class="plot-container mb-4 fade-in fade-in-2">
+  <div class="plot-header">
+    <span class="plot-title"><i class="fa-solid fa-chart-line icon-primary"></i> Original vs First-Differenced Series - Y(t) and Y'(t)</span>
+    <button class="btn-download" data-download-img="plotDiff">
+      <i class="fa-solid fa-download"></i> Download
+    </button>
+  </div>
+  <img id="plotDiff" src="data:image/png;base64,{{ plot_diff }}" alt="Differenced Series Plot"/>
+</div>
+
+<!-- ADF Before vs After -->
+<div class="row g-4 mb-4 fade-in fade-in-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-microscope icon-primary"></i> ADF Test - Original Series (d=0)</span>
+        {% if adf_before.is_stationary %}
+        <span class="verdict-stationary" style="font-size:0.7rem;"><i class="fa-solid fa-circle-check icon-primary"></i> Stationary</span>
+        {% else %}
+        <span class="verdict-nonstationary" style="font-size:0.7rem;"><i class="fa-solid fa-triangle-exclamation icon-primary"></i> Non-Stationary</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <table class="table-dark-custom">
+          <tbody>
+            <tr><td>ADF Statistic</td><td class="mono">{{ adf_before.test_statistic }}</td></tr>
+            <tr><td>p-value</td><td class="mono" style="color:{% if adf_before.is_stationary %}var(--accent-green){% else %}var(--accent-orange){% endif %};">{{ adf_before.p_value }}</td></tr>
+            <tr><td>Critical (5%)</td><td class="mono">{{ adf_before.critical_values['5%'] }}</td></tr>
+          </tbody>
+        </table>
+        <div class="alert-custom {% if adf_before.is_stationary %}alert-success{% else %}alert-warning{% endif %} mt-2" style="margin-bottom:0;font-size:0.8rem;">
+          {{ adf_before.conclusion }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-microscope icon-primary"></i> ADF Test - After Differencing (d={{ d }})</span>
+        {% if adf_after.is_stationary %}
+        <span class="verdict-stationary" style="font-size:0.7rem;"><i class="fa-solid fa-circle-check icon-primary"></i> Stationary</span>
+        {% else %}
+        <span class="verdict-nonstationary" style="font-size:0.7rem;"><i class="fa-solid fa-triangle-exclamation icon-primary"></i> Non-Stationary</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <table class="table-dark-custom">
+          <tbody>
+            <tr><td>ADF Statistic</td><td class="mono">{{ adf_after.test_statistic }}</td></tr>
+            <tr><td>p-value</td><td class="mono" style="color:{% if adf_after.is_stationary %}var(--accent-green){% else %}var(--accent-orange){% endif %};">{{ adf_after.p_value }}</td></tr>
+            <tr><td>Critical (5%)</td><td class="mono">{{ adf_after.critical_values['5%'] }}</td></tr>
+          </tbody>
+        </table>
+        <div class="alert-custom {% if adf_after.is_stationary %}alert-success{% else %}alert-warning{% endif %} mt-2" style="margin-bottom:0;font-size:0.8rem;">
+          {{ adf_after.conclusion }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:right;">
+  <a href="{{ url_for('acf_pacf') }}" class="btn-primary-custom">
+    Proceed to ACF &amp; PACF <i class="fa-solid fa-arrow-right"></i>
+  </a>
+</div>
+{% endblock %}

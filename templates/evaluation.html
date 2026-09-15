@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Evaluation - SmartInventory{% endblock %}
+{% block breadcrumb %}Model Evaluation{% endblock %}
+
+{% block content %}
+{% if current_category %}
+<div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
+    <i class="fa-solid fa-filter"></i>
+    <span>
+        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
+    </span>
+</div>
+{% endif %}
+
+<div class="page-header fade-in">
+  <h1 class="page-title"><i class="fa-solid fa-circle-check icon-primary"></i> Model Evaluation</h1>
+  <p class="page-subtitle">Assess ARIMA({{ p }},{{ d }},{{ q }}) forecast accuracy using MAE, RMSE, and MAPE metrics.</p>
+</div>
+
+<!-- Metric Cards -->
+<div class="row g-4 mb-4 fade-in fade-in-1">
+  <div class="col-md-4">
+    <div class="metric-card">
+      <div class="metric-value">{{ eval_data.mae }}</div>
+      <div class="metric-name">MAE - Mean Absolute Error</div>
+      <div class="metric-formula">MAE = (1/n) Σ|Yₜ − Ŷₜ|</div>
+      <hr style="border-color:var(--border-color);margin:0.75rem 0;"/>
+      <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.6;">
+        On average, the ARIMA forecast deviates from actual demand by
+        <strong style="color:var(--accent-blue);">{{ eval_data.mae }} units</strong>.
+        MAE treats all errors equally - no penalty for large errors.
+      </p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="metric-card">
+      <div class="metric-value">{{ eval_data.rmse }}</div>
+      <div class="metric-name">RMSE - Root Mean Squared Error</div>
+      <div class="metric-formula">RMSE = √[(1/n) Σ(Yₜ − Ŷₜ)²]</div>
+      <hr style="border-color:var(--border-color);margin:0.75rem 0;"/>
+      <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.6;">
+        RMSE = <strong style="color:var(--accent-purple);">{{ eval_data.rmse }} units</strong>.
+        Penalises large errors more than MAE. Useful for detecting outlier forecasts.
+        Always RMSE ≥ MAE.
+      </p>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="metric-card">
+      <div class="metric-value">{{ eval_data.mape }}%</div>
+      <div class="metric-name">MAPE - Mean Abs. Percentage Error</div>
+      <div class="metric-formula">MAPE = (100/n) Σ|Yₜ−Ŷₜ|/|Yₜ|</div>
+      <hr style="border-color:var(--border-color);margin:0.75rem 0;"/>
+      <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.6;">
+        Scale-free accuracy metric. MAPE = <strong style="color:var(--accent-orange);">{{ eval_data.mape }}%</strong>.
+        Interpretation: <em>{{ eval_data.interpretation }}</em>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Actual vs Fitted Plot -->
+<div class="plot-container mb-4 fade-in fade-in-2">
+  <div class="plot-header">
+    <span class="plot-title"><i class="fa-solid fa-chart-line icon-primary"></i> Actual vs Fitted - In-Sample ARIMA({{ p }},{{ d }},{{ q }}) Performance</span>
+    <button class="btn-download" data-download-img="plotEval">
+      <i class="fa-solid fa-download"></i> Download
+    </button>
+  </div>
+  <img id="plotEval" src="data:image/png;base64,{{ plot_eval }}" alt="Actual vs Fitted"/>
+</div>
+
+<!-- Metric Formulas Deep Dive -->
+<div class="row g-4 mb-4 fade-in fade-in-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><span class="card-title"><i class="fa-solid fa-ruler-combined icon-primary"></i> Mathematical Derivations</span></div>
+      <div class="card-body">
+
+        <div class="math-box mb-3">
+          <div class="math-title">MAE</div>
+          <div class="math-formula">$$\text{MAE} = \frac{1}{n}\sum_{t=1}^n |Y_t - \hat{Y}_t|$$</div>
+          <div class="math-note">Unit: same as demand. Linear penalty - each error unit contributes equally. Robust to outliers.</div>
+        </div>
+
+        <div class="math-box mb-3">
+          <div class="math-title">RMSE</div>
+          <div class="math-formula">$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^n (Y_t - \hat{Y}_t)^2}$$</div>
+          <div class="math-note">Unit: same as demand. Quadratic penalty - larger errors are weighted more. Sensitive to outliers.</div>
+        </div>
+
+        <div class="math-box">
+          <div class="math-title">MAPE</div>
+          <div class="math-formula">$$\text{MAPE} = \frac{100}{n}\sum_{t=1}^n \left|\frac{Y_t - \hat{Y}_t}{Y_t}\right|$$</div>
+          <div class="math-note">Unit: percentage (%). Scale-independent. Undefined when Yₜ = 0. Useful for cross-series comparison.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><span class="card-title"><i class="fa-solid fa-chart-column icon-primary"></i> Accuracy Summary</span></div>
+      <div class="card-body">
+
+        <table class="table-dark-custom mb-3">
+          <thead><tr><th>Metric</th><th>Value</th><th>Unit</th></tr></thead>
+          <tbody>
+            <tr><td>MAE</td><td class="mono" style="color:var(--accent-blue);">{{ eval_data.mae }}</td><td>Demand Units</td></tr>
+            <tr><td>RMSE</td><td class="mono" style="color:var(--accent-purple);">{{ eval_data.rmse }}</td><td>Demand Units</td></tr>
+            <tr><td>MAPE</td><td class="mono" style="color:var(--accent-orange);">{{ eval_data.mape }}%</td><td>Percentage</td></tr>
+            <tr><td>Observations</td><td class="mono">{{ eval_data.n_obs }}</td><td>Periods</td></tr>
+          </tbody>
+        </table>
+
+        <div class="alert-custom alert-info">
+          <div>
+            <strong>Overall Assessment:</strong><br/>
+            {{ eval_data.interpretation }}<br/>
+            <small>
+              MAPE guide: &lt;10% = Highly Accurate | 10-20% = Good | 20-50% = Reasonable | &gt;50% = Poor
+            </small>
+          </div>
+        </div>
+
+        <div class="math-box" style="margin:0;">
+          <div class="math-title"><i class="fa-solid fa-lightbulb icon-primary"></i> Relationship Between Metrics</div>
+          <div class="math-note" style="line-height:1.8;">
+            Always: <strong>MAE ≤ RMSE</strong> (equality only when all errors are equal)<br/>
+            When errors are normally distributed: $\text{RMSE} \approx \sigma \cdot \sqrt{2/\pi} \cdot \text{MAE}/\text{MAE}$<br/>
+            MAPE is undefined if any $Y_t = 0$; use RMSE in such cases.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if holdout %}
+<div class="card mb-3 fade-in fade-in-4">
+  <div class="card-header">
+    <span class="card-title"><i class="fa-solid fa-bullseye icon-primary"></i> Out-of-Sample Accuracy (Held-Out Test)</span>
+  </div>
+  <div class="card-body">
+    <p class="page-subtitle mb-3">
+      The metrics above are <strong>in-sample</strong>: they compare the fitted values against the very
+      observations used to estimate the coefficients, so they flatter the model. Here the model is
+      re-fitted on only the first <strong>{{ holdout.train_size }}</strong> periods and then asked to
+      forecast the <strong>{{ holdout.test_size }}</strong> periods it has never seen. This is the
+      honest measure of forecasting performance.
+    </p>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-name">MAE (held-out)</div>
+          <div class="metric-value" style="color:var(--accent-blue);">{{ holdout.mae }}</div>
+          <div class="metric-formula">Average absolute error on unseen periods.</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-name">RMSE (held-out)</div>
+          <div class="metric-value" style="color:var(--accent-purple);">{{ holdout.rmse }}</div>
+          <div class="metric-formula">Penalises large misses more heavily.</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-name">MAPE (held-out)</div>
+          <div class="metric-value" style="color:var(--accent-orange);">{{ holdout.mape }}%</div>
+          <div class="metric-formula">{{ holdout.interpretation }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table-dark-custom">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Actual Demand</th>
+            <th>Forecast</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for period in holdout.periods %}
+          <tr>
+            <td><strong>{{ period }}</strong></td>
+            <td class="mono">{{ holdout.actual[loop.index0] }}</td>
+            <td class="mono">{{ holdout.predicted[loop.index0] }}</td>
+            <td class="mono" style="color:{% if (holdout.actual[loop.index0] - holdout.predicted[loop.index0])|abs > holdout.mae %}var(--accent-orange){% else %}var(--accent-green){% endif %};">
+              {{ (holdout.actual[loop.index0] - holdout.predicted[loop.index0]) | round(2) }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="text-align:right;" class="fade-in fade-in-4">
+  <a href="{{ url_for('inventory') }}" class="btn-primary-custom">
+    Inventory Optimization <i class="fa-solid fa-arrow-right"></i>
+  </a>
+</div>
+{% endblock %}

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}ACF & PACF - SmartInventory{% endblock %}
+{% block breadcrumb %}ACF & PACF{% endblock %}
+
+{% block content %}
+{% if current_category %}
+<div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
+    <i class="fa-solid fa-filter"></i>
+    <span>
+        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
+    </span>
+</div>
+{% endif %}
+
+<div class="page-header fade-in">
+  <h1 class="page-title"><i class="fa-solid fa-chart-line icon-primary"></i> ACF &amp; PACF Analysis</h1>
+  <p class="page-subtitle">Identify ARIMA(p,d,q) order parameters using Autocorrelation and Partial Autocorrelation Functions.</p>
+</div>
+
+<!-- Recommended Order Banner -->
+<div class="card mb-4 fade-in" style="border-color:rgba(78,154,241,0.4);background:linear-gradient(135deg,rgba(78,154,241,0.1),rgba(167,139,250,0.06));">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;padding:1.5rem;">
+    <div>
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--accent-blue);font-weight:600;margin-bottom:0.4rem;">
+        <i class="fa-solid fa-bullseye icon-primary"></i> Automatically Recommended Order
+      </div>
+      <div class="order-badge">
+        ARIMA( {{ order_info.p }}, {{ order_info.d }}, {{ order_info.q }} )
+      </div>
+    </div>
+    <div style="max-width:500px;">
+      <p style="font-size:0.82rem;color:var(--text-secondary);margin:0;line-height:1.7;">
+        {{ order_info.explanation }}
+      </p>
+    </div>
+    <a href="{{ url_for('arima') }}" class="btn-primary-custom">
+      Fit ARIMA Model <i class="fa-solid fa-arrow-right"></i>
+    </a>
+  </div>
+</div>
+
+<!-- ACF PACF Theory -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card h-100 fade-in fade-in-1">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-chart-column icon-primary"></i> ACF - Autocorrelation Function</span>
+        <span style="font-size:0.75rem;color:var(--accent-blue);">→ identifies q</span>
+      </div>
+      <div class="card-body">
+        <div class="math-box mb-3">
+          <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> ACF Definition</div>
+          <div class="math-formula">$$\rho(k) = \frac{\gamma(k)}{\gamma(0)} = \frac{\text{Cov}(Y_t, Y_{t-k})}{\text{Var}(Y_t)}$$</div>
+          <div class="math-note">
+            <strong>γ(k)</strong> = autocovariance at lag k<br/>
+            <strong>ρ(k)</strong> ∈ [−1, 1] = autocorrelation at lag k<br/>
+            <strong>Confidence bounds:</strong> $\pm \dfrac{1.96}{\sqrt{n}}$ (Bartlett's formula)
+          </div>
+        </div>
+        <div class="alert-custom alert-info" style="font-size:0.8rem;">
+          <div>
+            <strong>How to read ACF:</strong><br/>
+            • <strong>MA(q):</strong> ACF cuts off abruptly after lag q (significant spikes only for lags 1 to q)<br/>
+            • Significant lags: {{ order_info.significant_acf[:5] | join(', ') if order_info.significant_acf else 'None beyond lag 0' }}<br/>
+            • <strong>Suggested q = {{ order_info.q }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card h-100 fade-in fade-in-2">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-chart-column icon-primary"></i> PACF - Partial Autocorrelation Function</span>
+        <span style="font-size:0.75rem;color:var(--accent-orange);">→ identifies p</span>
+      </div>
+      <div class="card-body">
+        <div class="math-box mb-3">
+          <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> PACF Definition</div>
+          <div class="math-formula">$$\phi_{kk} = \text{Corr}(Y_t, Y_{t-k} \mid Y_{t-1}, \ldots, Y_{t-k+1})$$</div>
+          <div class="math-note">
+            PACF measures the <strong>direct</strong> relationship between $Y_t$ and $Y_{t-k}$ after removing the indirect effects of intermediate lags 1 through k-1.<br/>
+            Estimated using the <strong>Yule-Walker equations</strong>.
+          </div>
+        </div>
+        <div class="alert-custom alert-info" style="font-size:0.8rem;">
+          <div>
+            <strong>How to read PACF:</strong><br/>
+            • <strong>AR(p):</strong> PACF cuts off abruptly after lag p<br/>
+            • Significant lags: {{ order_info.significant_pacf[:5] | join(', ') if order_info.significant_pacf else 'None beyond lag 0' }}<br/>
+            • <strong>Suggested p = {{ order_info.p }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACF PACF Plot -->
+<div class="plot-container mb-4 fade-in fade-in-2">
+  <div class="plot-header">
+    <span class="plot-title"><i class="fa-solid fa-chart-line icon-primary"></i> ACF &amp; PACF - Applied to Differenced Series (d={{ order_info.d }})</span>
+    <button class="btn-download" data-download-img="plotACFPACF">
+      <i class="fa-solid fa-download"></i> Download
+    </button>
+  </div>
+  <img id="plotACFPACF" src="data:image/png;base64,{{ plot_ap }}" alt="ACF PACF Plot"/>
+</div>
+
+<!-- Model Selection Rules -->
+<div class="card mb-4 fade-in fade-in-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fa-solid fa-clipboard-list icon-primary"></i> ARIMA Model Selection Rules (Box-Jenkins Methodology)</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <table class="table-dark-custom">
+          <thead><tr><th>ACF Pattern</th><th>PACF Pattern</th><th>Model</th></tr></thead>
+          <tbody>
+            <tr><td>Tails off slowly</td><td>Cuts off at lag p</td><td class="mono">AR(p)</td></tr>
+            <tr><td>Cuts off at lag q</td><td>Tails off slowly</td><td class="mono">MA(q)</td></tr>
+            <tr><td>Tails off slowly</td><td>Tails off slowly</td><td class="mono">ARMA(p,q)</td></tr>
+            <tr><td>Non-stationary pattern</td><td>Very slow decay</td><td class="mono">Difference (d↑)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <div class="math-box" style="margin:0;height:100%;">
+          <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> Information Criteria</div>
+          <div class="math-formula" style="font-size:0.9rem;">$$\text{AIC} = -2\ln(\hat{L}) + 2k$$</div>
+          <div class="math-formula" style="font-size:0.9rem;">$$\text{BIC} = -2\ln(\hat{L}) + k\ln(n)$$</div>
+          <div class="math-note">
+            where $\hat{L}$ = maximised likelihood, $k$ = parameters, $n$ = sample size.<br/>
+            <strong>Lower AIC/BIC = Better model fit.</strong> BIC penalises complexity more than AIC.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:right;">
+  <a href="{{ url_for('arima') }}" class="btn-primary-custom">
+    Fit ARIMA({{ order_info.p }}, {{ order_info.d }}, {{ order_info.q }}) <i class="fa-solid fa-arrow-right"></i>
+  </a>
+</div>
+{% endblock %}

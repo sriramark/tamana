@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# user uploads are runtime data, not source
+uploads/*
+!uploads/.gitkeep
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# matplotlib/statsmodels scratch
+*.log

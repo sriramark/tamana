@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}About | Smart Inventory{% endblock %}
+{% block header_title %}Methodology{% endblock %}
+
+{% block content %}
+
+{# Layout family: prose lede, no eyebrow. Page eyebrow budget spent on none,
+   since the Overview page already carries the project's single eyebrow. #}
+<section class="statement">
+    <h2 class="statement-title">How this project was built</h2>
+    <p class="statement-body">
+        A final-year BSc Mathematics project applying Box-Jenkins time series analysis to a
+        real operations problem: deciding when and how much to reorder.
+    </p>
+</section>
+
+{# Layout family: asymmetric split, prose against a code-structure panel. #}
+<section class="section-block split-asym">
+    <div class="split-asym-main">
+        <h3 class="section-heading">Approach</h3>
+        <p class="section-lede">
+            The application is deliberately split so that no statistical work happens inside a web route.
+            Flask handles requests and rendering only; every calculation lives in a separate package that
+            can be imported and tested on its own.
+        </p>
+        <dl class="decision-list">
+            <div>
+                <dt>Reproducible by default</dt>
+                <dd>The three source CSVs ship with the project, so the full pipeline runs offline without a Kaggle account.</dd>
+            </div>
+            <div>
+                <dt>Parameters are tested, not assumed</dt>
+                <dd>The differencing order comes from repeated ADF tests, and <em>p</em> and <em>q</em> are read from the ACF and PACF rather than hardcoded.</dd>
+            </div>
+            <div>
+                <dt>Accuracy measured on unseen data</dt>
+                <dd>A chronological train and test split keeps the headline error figure honest, since in-sample error always flatters a fitted model.</dd>
+            </div>
+        </dl>
+    </div>
+
+    <aside class="split-asym-side">
+        <div class="tree-panel">
+            <span class="tree-label">Project structure</span>
+<pre class="tree">app.py            routes only
+ml/
+  preprocess.py   load, merge, resample
+  stationarity.py ADF test, differencing
+  arima_model.py  ACF/PACF, fit, forecast
+  evaluation.py   MAE, RMSE, MAPE
+  inventory.py    EOQ, safety stock, ROP
+  visualization.py all charts
+templates/        Jinja views
+static/           styles and scripts
+dataset/          bundled source CSVs</pre>
+        </div>
+    </aside>
+</section>
+
+{# Layout family: horizontal step flow, reused shape from Overview but with
+   the full nine-stage detail rather than the five-stage summary. #}
+<section class="section-block">
+    <h3 class="section-heading">Analysis pipeline</h3>
+    <p class="section-lede">
+        Each stage below is a page in the application, so the method can be walked through in order.
+    </p>
+    <ol class="stage-list">
+        {% for name, detail, route in [
+            ('Load and merge',      'Three CSVs joined on order and product keys, dates parsed, quantities coerced', 'dataset'),
+            ('Aggregate',           'Resample to month end, keep zero-demand months, trim partial first and last buckets', 'analysis'),
+            ('Describe',            'Mean, median, variance, skewness, kurtosis, coefficient of variation', 'analysis'),
+            ('Test stationarity',   'Augmented Dickey-Fuller against the unit-root null hypothesis', 'differencing'),
+            ('Difference',          'Apply the smallest d that rejects the null, if any is needed at all', 'differencing'),
+            ('Identify order',      'Read significant lags from the ACF and PACF to propose p and q', 'acf_pacf'),
+            ('Estimate',            'Maximum likelihood fit, compare candidates by AIC and BIC', 'arima'),
+            ('Forecast',            'Six periods ahead with a 95% prediction interval', 'forecast'),
+            ('Validate and stock',  'Held-out error metrics, then safety stock, reorder point and order quantity', 'inventory'),
+        ] %}
+        <li class="stage-item">
+            <span class="stage-num">{{ "%02d"|format(loop.index) }}</span>
+            <div class="stage-body">
+                <a href="{{ url_for(route) }}" class="stage-name">{{ name }}</a>
+                <p>{{ detail }}</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+
+{# Layout family: two-column reference split, mathematics against tooling. #}
+<section class="section-block limits">
+    <div>
+        <h3 class="section-heading">Mathematical scope</h3>
+        <ul class="limit-list">
+            <li><strong>Time series theory.</strong> Stationarity, autocovariance, the backshift operator.</li>
+            <li><strong>Hypothesis testing.</strong> ADF statistic, critical values, p-value interpretation.</li>
+            <li><strong>Autocorrelation.</strong> ACF, PACF and Bartlett confidence bounds.</li>
+            <li><strong>Box-Jenkins.</strong> Identification, estimation by maximum likelihood, diagnostic checking.</li>
+            <li><strong>Forecast theory.</strong> h-step ahead prediction and interval construction.</li>
+            <li><strong>Inventory models.</strong> Wilson's EOQ formula and service-level safety stock.</li>
+            <li><strong>Probability.</strong> The normal distribution and z-scores behind service levels.</li>
+        </ul>
+        <a href="{{ url_for('math_derivation') }}" class="side-link">
+            Full derivations <i class="fa-solid fa-arrow-right"></i>
+        </a>
+    </div>
+    <div>
+        <h3 class="section-heading">Tooling</h3>
+        <div class="table-responsive">
+            <table class="info-table">
+                <tr><th>Flask 3.1</th><td>Routing, sessions, templating</td></tr>
+                <tr><th>pandas 2.2</th><td>Merging, resampling, descriptive statistics</td></tr>
+                <tr><th>statsmodels 0.14</th><td>ADF test, ACF/PACF, ARIMA estimation</td></tr>
+                <tr><th>NumPy 2.1</th><td>Array arithmetic and error metrics</td></tr>
+                <tr><th>SciPy 1.14</th><td>Normal quantiles for service levels</td></tr>
+                <tr><th>Matplotlib 3.9</th><td>All charts, rendered server side</td></tr>
+                <tr><th>MathJax 3</th><td>Equation typesetting in the browser</td></tr>
+            </table>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

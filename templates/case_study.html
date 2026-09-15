@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Case Study | Festive Demand Scenario{% endblock %}
+{% block header_title %}Case Study: Demand Spike Scenario{% endblock %}
+
+{% block content %}
+<div class="alert alert-warning mb-4">
+    <i class="fa-solid fa-flask"></i> <span><strong>Case Study:</strong> Demonstration of demand forecasting under peak festive demand conditions.</span>
+</div>
+
+<div class="grid-2col mb-4">
+    <div class="card card-accent">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-bottle-water icon-primary"></i> Target Product: {{ scenario.product }}</h3>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr>
+                    <th>Product Name:</th>
+                    <td><strong>{{ scenario.product }}</strong></td>
+                </tr>
+                <tr>
+                    <th>Expected Demand:</th>
+                    <td><span class="badge badge-info">{{ "{:,}".format(scenario.expected_demand) }} units</span></td>
+                </tr>
+                <tr>
+                    <th>Actual Demand:</th>
+                    <td><span class="badge badge-danger">{{ "{:,}".format(scenario.actual_demand) }} units</span></td>
+                </tr>
+                <tr>
+                    <th>Unfulfilled Demand:</th>
+                    <td><strong class="text-danger">{{ "{:,}".format(scenario.unfulfilled_demand) }} units</strong></td>
+                </tr>
+                <tr>
+                    <th>Lead Time ($L$):</th>
+                    <td>{{ scenario.lead_time }} days</td>
+                </tr>
+                <tr>
+                    <th>Stockout Duration:</th>
+                    <td>{{ scenario.stockout_duration }} days</td>
+                </tr>
+                <tr>
+                    <th>Emergency Procurement Cost:</th>
+                    <td><strong class="text-danger">₹{{ "{:,}".format(scenario.emergency_cost) }}</strong></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-chart-pie icon-primary"></i> Stock-Out Impact Analysis</h3>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr><th>Underestimation:</th><td><strong class="text-danger">+28.1%</strong></td></tr>
+                <tr><th>Shortage Ratio:</th><td><strong class="text-warning">22.0%</strong></td></tr>
+            </table>
+            <div class="alert alert-danger mt-4">
+                <i class="fa-solid fa-triangle-exclamation"></i> 
+                <span>{{ scenario.stockout_duration }} days of stockout resulted in lost revenue on {{ "{:,}".format(scenario.unfulfilled_demand) }} cartons and ₹{{ "{:,}".format(scenario.emergency_cost) }} emergency procurement costs ({{ scenario.shortage_pct }}% of demand unmet, {{ scenario.fulfillment_pct }}% fulfilled).</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-lightbulb icon-primary"></i> Solution Overview</h3>
+    </div>
+    <div class="card-body">
+        <div class="pipeline-steps">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h4>Trend Detection</h4>
+                <p>ARIMA captures peak demand shifts from historical data.</p>
+            </div>
+            <div class="step-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h4>Safety Stock</h4>
+                <p>Calculates $SS = Z \cdot \sigma \cdot \sqrt{L}$ for lead time buffer.</p>
+            </div>
+            <div class="step-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h4>Automated ROP</h4>
+                <p>Orders are placed 2 days in advance before stock hits zero.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

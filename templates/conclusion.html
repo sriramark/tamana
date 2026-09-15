@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Conclusion | Smart Inventory{% endblock %}
+{% block header_title %}Conclusion{% endblock %}
+
+{% block content %}
+
+{# Layout family: full-width statement. No eyebrow on this page at all, the
+   headline carries it. #}
+<section class="statement">
+    <h2 class="statement-title">
+        A forecast is only useful once it changes what you order.
+    </h2>
+    <p class="statement-body">
+        This project closes that gap. ARIMA produces the demand estimate, and that estimate feeds
+        directly into safety stock, the reorder point and the order quantity, rather than sitting in a
+        chart nobody acts on.
+    </p>
+</section>
+
+{# Layout family: findings as a numbered vertical list with hairline rules.
+   Deliberately not a card grid, which the rest of the site already uses. #}
+<section class="section-block">
+    <h3 class="section-heading">What the work shows</h3>
+    <ol class="finding-list">
+        <li>
+            <h4>Demand in this dataset is stationary, so no differencing is needed</h4>
+            <p>
+                Iterative ADF testing returns <strong>d = 0</strong>. Monthly demand oscillates around a
+                stable mean of roughly 500 units with no trend, so differencing would only have added
+                noise. Assuming <em>d = 1</em> by default would have been the wrong call.
+            </p>
+        </li>
+        <li>
+            <h4>Out-of-sample error stays under 5%</h4>
+            <p>
+                Refitting on the first 14 periods and forecasting the 5 the model had never seen gives
+                <strong>MAE 17.68</strong>, <strong>RMSE 20.04</strong> and <strong>MAPE 3.53%</strong>.
+                That falls inside the conventional band for an accurate forecast.
+            </p>
+        </li>
+        <li>
+            <h4>Data preparation changed the result more than model tuning</h4>
+            <p>
+                The raw series began mid-March 2023 and ended on 4 November 2024, leaving two partial
+                monthly buckets that looked like a demand collapse. Trimming them, and keeping
+                zero-demand months rather than dropping them, mattered more than any choice of
+                <em>p</em> or <em>q</em>.
+            </p>
+        </li>
+        <li>
+            <h4>Safety stock is a service-level decision, not a statistical one</h4>
+            <p>
+                The model supplies the mean and the variance. Choosing <em>how much</em> stockout risk to
+                accept is a business judgement expressed through the service level, and the z-score
+                converts that judgement into units.
+            </p>
+        </li>
+    </ol>
+</section>
+
+{# Layout family: two-column honest-limitations split. #}
+<section class="section-block limits">
+    <div>
+        <h3 class="section-heading">Limitations</h3>
+        <ul class="limit-list">
+            <li>Nineteen monthly observations is a short series. Confidence intervals are correspondingly wide.</li>
+            <li>The model is non-seasonal. A longer series would justify testing SARIMA for festive peaks.</li>
+            <li>Ordering and holding costs are user inputs, not measured figures from a real supplier.</li>
+            <li>Lead time is treated as fixed. Variable lead time would widen the safety-stock requirement.</li>
+        </ul>
+    </div>
+    <div>
+        <h3 class="section-heading">Where it goes next</h3>
+        <ul class="limit-list">
+            <li>Seasonal SARIMA once two or more full years of data are available.</li>
+            <li>Per-product forecasting rather than per-category aggregation.</li>
+            <li>Rolling-origin backtesting instead of a single train and test split.</li>
+            <li>Stochastic lead time in the safety-stock calculation.</li>
+        </ul>
+    </div>
+</section>
+
+{# Layout family: single closing action row. Only one CTA, no duplicate intent. #}
+<section class="closing-row">
+    <p>See the numbers behind these conclusions.</p>
+    <a href="{{ url_for('evaluation') }}" class="btn btn-primary">
+        Open the accuracy report <i class="fa-solid fa-arrow-right"></i>
+    </a>
+</section>
+
+{% endblock %}

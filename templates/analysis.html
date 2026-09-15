@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Demand Analysis | Historical Time Series{% endblock %}
+{% block header_title %}Historical Demand Analysis & Time Series Statistics{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-filter icon-primary"></i> Select Product Category</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('analysis') }}" class="form-row">
+            <div class="form-group">
+                <label for="category"><strong>Product Category:</strong></label>
+                <select name="category" id="category" class="form-control" onchange="this.form.submit()">
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="flex: 0 0 auto;">
+                <label>&nbsp;</label>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-sync"></i> Update Analysis</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="stats-overview-grid">
+    <div class="stat-card">
+        <div class="stat-icon bg-primary-light"><i class="fa-solid fa-calculator text-primary"></i></div>
+        <div class="stat-details">
+            <h3>{{ stats.mean }} units</h3>
+            <p>Average Monthly Demand ($\mu$)</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-success-light"><i class="fa-solid fa-arrow-trend-up text-success"></i></div>
+        <div class="stat-details">
+            <h3>{{ stats.max }} units</h3>
+            <p>Maximum Demand</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-warning-light"><i class="fa-solid fa-arrow-trend-down text-warning"></i></div>
+        <div class="stat-details">
+            <h3>{{ stats.min }} units</h3>
+            <p>Minimum Demand</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-danger-light"><i class="fa-solid fa-chart-line text-danger"></i></div>
+        <div class="stat-details">
+            <h3>{{ stats.std }} units</h3>
+            <p>Standard Deviation ($\sigma$)</p>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-chart-area icon-primary"></i> Historical Monthly Demand Graph ({{ selected_category }})</h3>
+    </div>
+    <div class="card-body text-center">
+        {% if plot_ts %}
+            <img src="data:image/png;base64,{{ plot_ts }}" alt="Historical Demand Plot" class="img-responsive">
+        {% else %}
+            <p class="text-muted">Graph unavailable.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2col mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-square-root-variable icon-primary"></i> Statistical Summary</h3>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr><th>Periods ($n$):</th><td>{{ stats.count }} months</td></tr>
+                <tr><th>Mean ($\mu$):</th><td><strong>{{ stats.mean }}</strong></td></tr>
+                <tr><th>Median:</th><td>{{ stats.median }}</td></tr>
+                <tr><th>Standard Deviation ($\sigma$):</th><td><strong>{{ stats.std }}</strong></td></tr>
+                <tr><th>Variance ($\sigma^2$):</th><td>{{ stats.variance }}</td></tr>
+                <tr><th>Coefficient of Variation ($CV$):</th><td><strong>{{ stats.cv }}%</strong></td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-vial-circle-check icon-primary"></i> Stationarity Test (ADF Test)</h3>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr><th>ADF Statistic:</th><td><code>{{ adf.test_statistic }}</code></td></tr>
+                <tr><th>p-value:</th><td><code>{{ adf.p_value }}</code></td></tr>
+                <tr><th>Status:</th>
+                    <td>
+                        {% if adf.is_stationary %}
+                            <span class="badge badge-success">Stationary (p < 0.05)</span>
+                        {% else %}
+                            <span class="badge badge-warning">Non-Stationary (d >= 1)</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+            <div class="alert alert-info mt-3">
+                <i class="fa-solid fa-lightbulb"></i> 
+                <span>{{ adf.interpretation }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}ARIMA Forecast | Demand Prediction{% endblock %}
+{% block header_title %}ARIMA Model Fitting & Demand Forecast{% endblock %}
+
+{% block content %}
+{% if current_category %}
+<div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
+    <i class="fa-solid fa-filter"></i>
+    <span>
+        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
+    </span>
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-sliders icon-primary"></i> ARIMA Order Specification</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('forecast') }}" class="form-row align-items-end" id="arimaOrderForm">
+            <div class="form-group">
+                <label for="p"><strong>$p$ (Autoregressive Order):</strong></label>
+                <input type="number" name="p" id="p" value="{{ p }}" min="0" max="5" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="d"><strong>$d$ (Differencing Order):</strong></label>
+                <input type="number" name="d" id="d" value="{{ d }}" min="0" max="2" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="q"><strong>$q$ (Moving Average Order):</strong></label>
+                <input type="number" name="q" id="q" value="{{ q }}" min="0" max="5" class="form-control">
+            </div>
+            <div class="form-group" style="flex: 0 0 auto;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-gears"></i> Fit Model</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger mb-4">
+    <i class="fa-solid fa-triangle-exclamation"></i> {{ error }}
+</div>
+{% endif %}
+
+<div class="card card-accent mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-square-root-variable icon-primary"></i> ARIMA Model Formula</h3>
+    </div>
+    <div class="card-body">
+        <div class="formula-box text-center">
+            $$\Delta Y_t = c + \phi_1 \Delta Y_{t-1} + \varepsilon_t + \theta_1 \varepsilon_{t-1}$$
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-chart-line icon-primary"></i> Historical Demand vs 6-Month ARIMA Forecast</h3>
+    </div>
+    <div class="card-body text-center">
+        {% if plot_fc %}
+            <img src="data:image/png;base64,{{ plot_fc }}" alt="ARIMA Forecast Chart" class="img-responsive">
+        {% else %}
+            <p class="text-muted">Forecast chart unavailable.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2col mb-4">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-calendar-days icon-primary"></i> 6-Month Forecast Values</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Forecast ($\hat{Y}$)</th>
+                            <th>Lower 95% CI</th>
+                            <th>Upper 95% CI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in fc_rows %}
+                        <tr>
+                            <td><strong>{{ row.month }}</strong></td>
+                            <td><span class="badge badge-primary">{{ row.forecast }} units</span></td>
+                            <td>{{ row.lower_ci }}</td>
+                            <td>{{ row.upper_ci }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-chart-pie icon-primary"></i> Model Metrics</h3>
+        </div>
+        <div class="card-body">
+            {% if model_info %}
+                <table class="info-table">
+                    <tr><th>AIC:</th><td class="mono">{{ model_info.aic }}</td></tr>
+                    <tr><th>BIC:</th><td class="mono">{{ model_info.bic }}</td></tr>
+                    <tr><th>Observations ($n$):</th><td class="mono">{{ model_info.nobs }}</td></tr>
+                    <tr><th>Error variance ($\sigma^2$):</th><td class="mono">{{ model_info.sigma2 }}</td></tr>
+                </table>
+                <p class="kpi-hint">Lower AIC/BIC indicates a better fit-versus-complexity trade-off.</p>
+            {% endif %}
+
+            {% if eval_metrics %}
+                <h4 class="mt-3" style="font-size:0.9rem;">Out-of-Sample Accuracy</h4>
+                <table class="info-table">
+                    <tr><th>MAE:</th><td><strong>{{ eval_metrics.mae }}</strong> units</td></tr>
+                    <tr><th>RMSE:</th><td><strong>{{ eval_metrics.rmse }}</strong> units</td></tr>
+                    <tr><th>MAPE:</th><td><strong>{{ eval_metrics.mape }}%</strong></td></tr>
+                    <tr><th>Train / Test Periods:</th><td>{{ eval_metrics.train_size }} / {{ eval_metrics.test_size }}</td></tr>
+                </table>
+                <div class="alert alert-info mt-3" style="margin-bottom:0;">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>{{ eval_metrics.interpretation }}</span>
+                </div>
+                <p class="kpi-hint">
+                    Measured on periods the model never saw during fitting.
+                    <a href="{{ url_for('evaluation') }}">Full accuracy breakdown &rarr;</a>
+                </p>
+            {% else %}
+                <p class="text-muted">Out-of-sample metrics require at least 10 periods.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

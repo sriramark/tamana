@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Inventory & Demand Prediction Using ARIMA{% endblock %}
+{% block header_title %}Overview{% endblock %}
+
+{% block content %}
+
+{# ---------------------------------------------------------------------------
+   Asymmetric split hero. Left column carries the message, right column carries
+   a real forecast chart rendered from the fitted model. Eyebrow budget for this
+   page is 1 and it is spent here, so no other section below has one.
+   --------------------------------------------------------------------------- #}
+<section class="home-hero">
+    <div class="home-hero-copy">
+        <span class="hero-eyebrow">BSc Mathematics Project</span>
+        <h2 class="home-hero-title">Forecast demand before the shelf empties.</h2>
+        <p class="home-hero-lede">
+            An ARIMA model turns historical sales into a demand forecast, then sizes safety stock and the reorder point from it.
+        </p>
+        <div class="home-hero-actions">
+            <a href="{{ url_for('forecast') }}" class="btn btn-primary">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Run the forecast
+            </a>
+            <a href="{{ url_for('dataset') }}" class="btn btn-ghost">
+                Explore the dataset
+            </a>
+        </div>
+    </div>
+
+    <figure class="home-hero-figure">
+        {% if summary and summary.plot_hero %}
+            <img src="data:image/png;base64,{{ summary.plot_hero }}"
+                 alt="Historical monthly demand with a six-month ARIMA forecast and 95 percent confidence interval">
+            <figcaption>
+                Six-month forecast, ARIMA{{ summary.order }}, fitted on {{ summary.periods }} monthly periods.
+            </figcaption>
+        {% else %}
+            <div class="home-hero-fallback">
+                <i class="fa-solid fa-chart-line"></i>
+                <p>Load the dataset to generate the forecast.</p>
+                <a href="{{ url_for('dataset') }}" class="btn btn-primary">Go to dataset</a>
+            </div>
+        {% endif %}
+    </figure>
+</section>
+
+{# --- Layout family 2: measured-results strip -------------------------------
+   Every number here is computed at request time from the real dataset and the
+   real held-out backtest. Nothing on this page is a placeholder figure. #}
+{% if summary %}
+<section class="result-strip">
+    <div class="result-item">
+        <span class="result-value">{{ "{:,}".format(summary.transactions) }}</span>
+        <span class="result-label">Transactions analysed</span>
+        <span class="result-note">{{ summary.date_from }} to {{ summary.date_to }}</span>
+    </div>
+    <div class="result-item">
+        <span class="result-value">{{ summary.periods }}</span>
+        <span class="result-label">Complete monthly periods</span>
+        <span class="result-note">{{ summary.categories }} categories, {{ summary.products }} products</span>
+    </div>
+    {% if summary.accuracy %}
+    <div class="result-item result-item-accent">
+        <span class="result-value">{{ summary.accuracy.mape }}%</span>
+        <span class="result-label">Forecast error (MAPE)</span>
+        <span class="result-note">{{ summary.accuracy.interpretation }}</span>
+    </div>
+    <div class="result-item">
+        <span class="result-value">{{ summary.accuracy.mae }}</span>
+        <span class="result-label">Mean absolute error</span>
+        <span class="result-note">Measured on {{ summary.accuracy.test_size }} unseen periods</span>
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+
+{# --- Layout family 3: pipeline as a numbered horizontal flow --------------- #}
+<section class="section-block">
+    <h3 class="section-heading">How the system works</h3>
+    <ol class="flow">
+        <li class="flow-step">
+            <span class="flow-num">1</span>
+            <h4>Aggregate</h4>
+            <p>Merge orders, line items and products, then resample to a gap-free monthly demand series.</p>
+        </li>
+        <li class="flow-step">
+            <span class="flow-num">2</span>
+            <h4>Test and difference</h4>
+            <p>Run the ADF test repeatedly to find the smallest <em>d</em> that makes the series stationary.</p>
+        </li>
+        <li class="flow-step">
+            <span class="flow-num">3</span>
+            <h4>Fit ARIMA</h4>
+            <p>Read ACF and PACF to choose <em>p</em> and <em>q</em>, then estimate coefficients by maximum likelihood.</p>
+        </li>
+        <li class="flow-step">
+            <span class="flow-num">4</span>
+            <h4>Forecast</h4>
+            <p>Project six periods ahead with a 95% confidence interval, clipped at zero.</p>
+        </li>
+        <li class="flow-step flow-step-accent">
+            <span class="flow-num">5</span>
+            <h4>Reorder</h4>
+            <p>Size safety stock and the reorder point from the forecast, then raise a low-stock alert.</p>
+        </li>
+    </ol>
+</section>
+
+{# --- Layout family 4: asymmetric two-column, formulas beside prose --------- #}
+<section class="section-block split-asym">
+    <div class="split-asym-main">
+        <h3 class="section-heading">What the model decides</h3>
+        <p class="section-lede">
+            The forecast is not the deliverable. The stocking decision is. Three quantities turn a
+            predicted demand figure into an instruction a warehouse can act on.
+        </p>
+        <dl class="decision-list">
+            <div>
+                <dt>Safety stock</dt>
+                <dd>Buffer that absorbs demand variance across the supplier lead time, sized by the service level you choose.</dd>
+            </div>
+            <div>
+                <dt>Reorder point</dt>
+                <dd>The stock level at which a replenishment order must be placed to avoid running out before delivery.</dd>
+            </div>
+            <div>
+                <dt>Order quantity</dt>
+                <dd>The batch size that minimises ordering cost and holding cost together.</dd>
+            </div>
+        </dl>
+    </div>
+    <aside class="split-asym-side">
+        <div class="formula-card">
+            <span class="formula-card-label">Safety stock</span>
+            $$SS = Z_{\alpha}\,\sigma\sqrt{L}$$
+        </div>
+        <div class="formula-card">
+            <span class="formula-card-label">Reorder point</span>
+            $$ROP = D_{daily} \cdot L + SS$$
+        </div>
+        <div class="formula-card">
+            <span class="formula-card-label">Order quantity</span>
+            $$EOQ = \sqrt{\frac{2DS}{H}}$$
+        </div>
+        <a href="{{ url_for('mathematics') }}" class="side-link">
+            Full derivations <i class="fa-solid fa-arrow-right"></i>
+        </a>
+    </aside>
+</section>
+
+{# --- Layout family 5: compact inline stack listing ------------------------- #}
+<section class="section-block">
+    <h3 class="section-heading">Built with</h3>
+    <ul class="stack-row">
+        <li><i class="fa-brands fa-python"></i><span>Python 3.12</span><small>Runtime</small></li>
+        <li><i class="fa-solid fa-flask"></i><span>Flask</span><small>Routes and views</small></li>
+        <li><i class="fa-solid fa-table-cells"></i><span>pandas</span><small>Merging and resampling</small></li>
+        <li><i class="fa-solid fa-chart-diagram"></i><span>statsmodels</span><small>ADF and ARIMA</small></li>
+        <li><i class="fa-solid fa-square-root-variable"></i><span>SciPy</span><small>Service-level z-scores</small></li>
+        <li><i class="fa-solid fa-image"></i><span>Matplotlib</span><small>All charts</small></li>
+    </ul>
+</section>
+
+{% endblock %}

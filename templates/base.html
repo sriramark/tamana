@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Inventory & Demand Prediction{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-name">Smart Inventory</div>
+                    <div class="brand-sub">ARIMA Demand Forecasting</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Overview</div>
+                
+                <div class="nav-item">
+                    <a href="{{ url_for('index') }}" class="nav-link {% if active == 'home' %}active{% endif %}">
+                        <i class="fa-solid fa-house nav-icon"></i>
+                        <span>Home</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('dataset') }}" class="nav-link {% if active == 'dataset' %}active{% endif %}">
+                        <i class="fa-solid fa-database nav-icon"></i>
+                        <span>Dataset</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('upload') }}" class="nav-link {% if active == 'upload' %}active{% endif %}">
+                        <i class="fa-solid fa-file-arrow-up nav-icon"></i>
+                        <span>Upload Your CSV</span>
+                    </a>
+                </div>
+
+                <div class="nav-section-title">Modelling Pipeline</div>
+                <div class="nav-item">
+                    <a href="{{ url_for('analysis') }}" class="nav-link {% if active == 'analysis' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-line nav-icon"></i>
+                        <span>Demand Analysis</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('differencing') }}" class="nav-link {% if active == 'differencing' %}active{% endif %}">
+                        <i class="fa-solid fa-wave-square nav-icon"></i>
+                        <span>Differencing (d)</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('acf_pacf') }}" class="nav-link {% if active == 'acf_pacf' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-simple nav-icon"></i>
+                        <span>ACF / PACF (p,q)</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('arima') }}" class="nav-link {% if active == 'arima' %}active{% endif %}">
+                        <i class="fa-solid fa-microchip nav-icon"></i>
+                        <span>Fit ARIMA Model</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('forecast') }}" class="nav-link {% if active == 'forecast' %}active{% endif %}">
+                        <i class="fa-solid fa-wand-magic-sparkles nav-icon"></i>
+                        <span>ARIMA Forecast</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('evaluation') }}" class="nav-link {% if active == 'evaluation' %}active{% endif %}">
+                        <i class="fa-solid fa-bullseye nav-icon"></i>
+                        <span>Accuracy (MAE/RMSE)</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('inventory') }}" class="nav-link {% if active == 'inventory' %}active{% endif %}">
+                        <i class="fa-solid fa-warehouse nav-icon"></i>
+                        <span>Inventory Optimization</span>
+                    </a>
+                </div>
+
+                <div class="nav-section-title">Reference</div>
+                <div class="nav-item">
+                    <a href="{{ url_for('case_study') }}" class="nav-link {% if active == 'case_study' %}active{% endif %}">
+                        <i class="fa-solid fa-store nav-icon"></i>
+                        <span>Diwali Case Study</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('mathematics') }}" class="nav-link {% if active == 'mathematics' %}active{% endif %}">
+                        <i class="fa-solid fa-calculator nav-icon"></i>
+                        <span>Mathematics</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('math_derivation') }}" class="nav-link {% if active == 'math_derivation' %}active{% endif %}">
+                        <i class="fa-solid fa-square-root-variable nav-icon"></i>
+                        <span>Full Derivations</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('about') }}" class="nav-link {% if active == 'about' %}active{% endif %}">
+                        <i class="fa-solid fa-circle-info nav-icon"></i>
+                        <span>About / Methodology</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a href="{{ url_for('conclusion') }}" class="nav-link {% if active == 'conclusion' %}active{% endif %}">
+                        <i class="fa-solid fa-award nav-icon"></i>
+                        <span>Conclusion</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="academic-badge">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>BSc Mathematics Project</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-wrapper">
+            <header class="top-header">
+                <div class="top-header-left">
+                    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle Navigation Menu">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-breadcrumb">
+                        <h1 class="header-title-text">{% block header_title %}Smart Inventory Management{% endblock %}</h1>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-container">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-custom flash-auto-dismiss">
+                                    <i class="fa-solid fa-circle-info"></i> <span>{{ message }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

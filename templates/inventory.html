@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Optimization | Reorder Point & Safety Stock{% endblock %}
+{% block header_title %}Inventory Optimization & Reorder Recommendation{% endblock %}
+
+{% block content %}
+
+<!-- Where the demand number comes from: this is the link between the ARIMA
+     forecast and every inventory figure on this page. -->
+<div class="alert alert-{% if inv.forecast_failed %}warning{% else %}info{% endif %} mb-4">
+    <i class="fa-solid fa-link"></i>
+    <span>
+        {% if inv.forecast_failed %}
+            The ARIMA model could not be fitted ({{ inv.forecast_failed }}), so these figures fall back to the
+            <strong>historical average</strong>. Adjust the order on the
+            <a href="{{ url_for('arima') }}">Fit ARIMA</a> page.
+        {% else %}
+            Demand below is driven by the <strong>ARIMA{{ inv.order }} forecast</strong> for
+            <strong>{{ inv.category }}</strong> &mdash; next period
+            <strong>{{ inv.forecast_next }} units</strong>, not the historical average
+            ({{ inv.monthly_avg }} units).
+        {% endif %}
+    </span>
+</div>
+
+<!-- Parameter input form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-sliders icon-primary"></i> Inventory Parameters Input Form</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('inventory') }}" class="form-row align-items-end">
+            <div class="form-group">
+                <label for="current_inventory"><strong>Current Stock Level (Units):</strong></label>
+                <input type="number" name="current_inventory" id="current_inventory" value="{{ inv.current_inventory }}" min="0" step="1" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="lead_time"><strong>Supplier Lead Time ($L$ in Days):</strong></label>
+                <input type="number" name="lead_time" id="lead_time" value="{{ inv.lead_time_days }}" min="1" step="1" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="service_level"><strong>Desired Service Level (%):</strong></label>
+                <select name="service_level" id="service_level" class="form-control">
+                    <option value="90" {% if inv.service_level == 90 %}selected{% endif %}>90% (Z = 1.282)</option>
+                    <option value="95" {% if inv.service_level == 95 %}selected{% endif %}>95% (Z = 1.645)</option>
+                    <option value="98" {% if inv.service_level == 98 %}selected{% endif %}>98% (Z = 2.054)</option>
+                    <option value="99" {% if inv.service_level == 99 %}selected{% endif %}>99% (Z = 2.326)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="ordering_cost"><strong>Ordering Cost $S$ (₹/order):</strong></label>
+                <input type="number" name="ordering_cost" id="ordering_cost" value="{{ inv.ordering_cost }}" min="1" step="1" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="holding_cost"><strong>Holding Cost $H$ (₹/unit/year):</strong></label>
+                <input type="number" name="holding_cost" id="holding_cost" value="{{ inv.holding_cost }}" min="1" step="1" class="form-control">
+            </div>
+            <div class="form-group" style="min-width: 100%;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-calculator"></i> Calculate Inventory Requirements</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Low-stock alert + reorder recommendation -->
+<div class="alert alert-{{ inv.status_badge }} mb-4" style="font-size: 1.05rem; padding: 1.25rem 1.5rem;">
+    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+        <i class="fa-solid {% if inv.status_badge == 'danger' %}fa-triangle-exclamation{% elif inv.status_badge == 'warning' %}fa-bell{% else %}fa-circle-check{% endif %} fa-2x"></i>
+        <div>
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">
+                Low-Stock Alert: <span class="badge badge-{{ inv.status_badge }}">{{ inv.status_text }}</span>
+            </h3>
+            <p style="margin-top: 0.35rem; margin-bottom: 0.35rem;">{{ inv.recommendation_msg }}</p>
+            <p style="margin: 0;"><strong>Action:</strong> {{ inv.action }}
+            {% if inv.status_text != 'SAFE' %}
+                Suggested order quantity <strong>{{ inv.suggested_order }} units</strong>
+                (approx. ₹{{ inv.investment }} holding investment).
+            {% else %}
+                Approximately <strong>{{ inv.periods_to_rop }}</strong> periods of cover remain before the reorder point is reached.
+            {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Key metrics -->
+<div class="stats-overview-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon bg-primary-light"><i class="fa-solid fa-boxes-stacked text-primary"></i></div>
+        <div class="stat-details">
+            <h3>{{ inv.current_inventory }} units</h3>
+            <p>Current Inventory Level</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-warning-light"><i class="fa-solid fa-bell text-warning"></i></div>
+        <div class="stat-details">
+            <h3>{{ inv.rop }} units</h3>
+            <p>Reorder Point ($ROP$)</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-success-light"><i class="fa-solid fa-shield-halved text-success"></i></div>
+        <div class="stat-details">
+            <h3>{{ inv.safety_stock }} units</h3>
+            <p>Safety Stock ($SS$)</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bg-info-light"><i class="fa-solid fa-truck-ramp-box text-info"></i></div>
+        <div class="stat-details">
+            <h3>{{ inv.eoq }} units</h3>
+            <p>Economic Order Quantity ($EOQ$)</p>
+        </div>
+    </div>
+</div>
+
+<!-- Forecast feeding the calculation -->
+{% if inv.forecast_values %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-wand-magic-sparkles icon-primary"></i> Forecasted Demand Driving These Figures</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table-dark-custom">
+                <thead>
+                    <tr>
+                        <th>Period ahead</th>
+                        {% for v in inv.forecast_values %}<th>t+{{ loop.index }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Forecast demand (units)</strong></td>
+                        {% for v in inv.forecast_values %}<td class="mono">{{ v }}</td>{% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="kpi-hint">
+            Reorder point uses <strong>t+1 = {{ inv.forecast_next }} units</strong>; EOQ annualises the mean of the
+            forecast horizon to <strong>D = {{ inv.annual_demand }} units/year</strong>.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid-2col mb-4">
+    <!-- Formula breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-calculator icon-primary"></i> Mathematical Formulas Breakdown</h3>
+        </div>
+        <div class="card-body">
+            <table class="info-table">
+                <tr>
+                    <th>Forecast Demand, next period ($\hat{Y}_{t+1}$):</th>
+                    <td><strong>{{ inv.forecast_next }} units/month</strong> <span class="text-muted">&mdash; {{ inv.demand_source }}</span></td>
+                </tr>
+                <tr>
+                    <th>Average Daily Demand ($D_{daily} = \hat{Y}_{t+1}/30$):</th>
+                    <td>{{ inv.daily_avg }} units/day</td>
+                </tr>
+                <tr>
+                    <th>Demand During Lead Time ($D_L = D_{daily} \cdot L$):</th>
+                    <td><strong>{{ inv.demand_during_lt }} units</strong> ({{ inv.daily_avg }} $\times$ {{ inv.lead_time_days }} days)</td>
+                </tr>
+                <tr>
+                    <th>Service Level Factor ($Z$ for {{ inv.service_level }}%):</th>
+                    <td>$Z = {{ inv.z_score }}$</td>
+                </tr>
+                <tr>
+                    <th>Demand Std. Deviation ($\sigma$):</th>
+                    <td>{{ inv.monthly_std }} units</td>
+                </tr>
+                <tr>
+                    <th>Lead-time Std. Deviation ($\sigma_L = \sigma\sqrt{L}$):</th>
+                    <td>{{ inv.sigma_lt }} units</td>
+                </tr>
+                <tr>
+                    <th>Safety Stock ($SS = Z \cdot \sigma \cdot \sqrt{L}$):</th>
+                    <td><strong>{{ inv.safety_stock }} units</strong></td>
+                </tr>
+                <tr>
+                    <th>Reorder Point ($ROP = D_L + SS$):</th>
+                    <td><strong class="text-warning" style="font-size: 1.15rem;">{{ inv.rop }} units</strong></td>
+                </tr>
+            </table>
+            <div class="alert alert-info mt-3" style="margin-bottom: 0;">
+                <i class="fa-solid fa-quote-left"></i>
+                <span><strong>Rule:</strong> when current inventory falls below the reorder point, the system raises a low-stock alert and recommends an order.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- EOQ / investment -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fa-solid fa-indian-rupee-sign icon-primary"></i> Order Quantity & Investment (EOQ)</h3>
+        </div>
+        <div class="card-body">
+            <div class="formula-box text-center">
+                $$EOQ = \sqrt{\frac{2 D S}{H}}$$
+            </div>
+            <table class="info-table">
+                <tr>
+                    <th>Annual Demand ($D$, from forecast):</th>
+                    <td>{{ inv.annual_demand }} units/year</td>
+                </tr>
+                <tr>
+                    <th>Ordering Cost ($S$):</th>
+                    <td>₹{{ inv.ordering_cost }} per order</td>
+                </tr>
+                <tr>
+                    <th>Holding Cost ($H$):</th>
+                    <td>₹{{ inv.holding_cost }} per unit per year</td>
+                </tr>
+                <tr>
+                    <th>Economic Order Quantity:</th>
+                    <td><strong class="text-info" style="font-size: 1.15rem;">{{ inv.eoq }} units</strong></td>
+                </tr>
+                <tr>
+                    <th>Total Annual Inventory Cost:</th>
+                    <td>₹{{ inv.total_cost }}</td>
+                </tr>
+                <tr>
+                    <th>Recommended Order Now:</th>
+                    <td><strong class="text-warning">{{ inv.suggested_order }} units</strong></td>
+                </tr>
+            </table>
+            <div class="alert alert-info mt-3" style="margin-bottom: 0;">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span>EOQ is the order size that minimises the sum of ordering cost and holding cost.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sawtooth chart -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fa-solid fa-chart-line icon-primary"></i> Inventory Sawtooth Model Visualization</h3>
+    </div>
+    <div class="card-body text-center">
+        {% if inv.plot_inv %}
+            <img id="plotInventory" src="data:image/png;base64,{{ inv.plot_inv }}" alt="Inventory Sawtooth Model" class="img-responsive">
+        {% else %}
+            <p class="text-muted">Inventory graph unavailable.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

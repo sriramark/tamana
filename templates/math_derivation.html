@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}Mathematical Derivations - SmartInventory{% endblock %}
+{% block breadcrumb %}Mathematical Derivations{% endblock %}
+
+{% block content %}
+<div class="page-header fade-in">
+  <h1 class="page-title">∫ Mathematical Derivations</h1>
+  <p class="page-subtitle">Complete mathematical theory behind ARIMA forecasting and inventory optimization - formatted for BSc Mathematics viva presentation.</p>
+</div>
+
+<!-- Table of Contents -->
+<div class="card mb-4 fade-in">
+  <div class="card-body">
+    <div style="font-size:0.8rem;font-weight:700;color:var(--accent-blue);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.75rem;"><i class="fa-solid fa-clipboard-list icon-primary"></i> Table of Contents</div>
+    <div class="row g-1" style="font-size:0.82rem;">
+      {% for i, topic in [
+        ('1','Time Series'), ('2','Stationarity'), ('3','ADF Test'),
+        ('4','Differencing'), ('5','Autoregressive Model'), ('6','Moving Average Model'),
+        ('7','ARIMA(p,d,q)'), ('8','ACF'), ('9','PACF'),
+        ('10','MAE'), ('11','RMSE'), ('12','MAPE'),
+        ('13','EOQ'), ('14','Safety Stock'), ('15','Reorder Point')
+      ] %}
+      <div class="col-md-4">
+        <a href="#sec{{ i }}" style="color:var(--text-secondary);text-decoration:none;display:flex;align-items:center;gap:0.4rem;padding:0.25rem 0;">
+          <span style="color:var(--accent-blue);font-weight:600;min-width:22px;">{{ i }}.</span>{{ topic }}
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ─── 1. Time Series ──────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec1">
+  <h3>1. Time Series</h3>
+  <p>A <strong>time series</strong> is a sequence of observations $\{Y_t\}_{t=1}^n$ indexed by time $t$. In inventory management, $Y_t$ represents demand in period $t$.</p>
+  <p>Formally, a time series is a collection of random variables ordered by time. The goal is to model the data-generating process and use it for forecasting.</p>
+  <div class="math-box">
+    <div class="math-title">Definition</div>
+    <div class="math-formula">$$\{Y_t : t \in \mathbb{Z}\} \quad\text{where } Y_t \in \mathbb{R}$$</div>
+    <div class="math-note">
+      <strong>Components of a time series:</strong><br/>
+      • <strong>Trend (T):</strong> Long-term increase or decrease<br/>
+      • <strong>Seasonality (S):</strong> Periodic fluctuations<br/>
+      • <strong>Cyclical (C):</strong> Non-periodic fluctuations<br/>
+      • <strong>Irregular (I):</strong> Random noise<br/>
+      Classical decomposition: $Y_t = T_t + S_t + C_t + I_t$ (additive)
+    </div>
+  </div>
+</div>
+
+<!-- ─── 2. Stationarity ─────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec2">
+  <h3>2. Stationarity</h3>
+  <p>A time series $\{Y_t\}$ is <strong>weakly (covariance) stationary</strong> if its statistical properties are invariant to shifts in time.</p>
+  <div class="math-box">
+    <div class="math-title">Three Conditions for Weak Stationarity</div>
+    <div class="math-formula">$$\mathbb{E}[Y_t] = \mu \quad \forall t \quad \text{(constant mean)}$$</div>
+    <div class="math-formula">$$\text{Var}(Y_t) = \sigma^2 < \infty \quad \forall t \quad \text{(constant variance)}$$</div>
+    <div class="math-formula">$$\text{Cov}(Y_t, Y_{t-k}) = \gamma(k) \quad \text{(depends only on lag } k\text{)}$$</div>
+    <div class="math-note">
+      <strong>Why stationarity matters:</strong> ARIMA requires stationarity because:
+      (1) the autocovariance function must be well-defined, and
+      (2) forecasts would be unbounded for non-stationary processes.
+    </div>
+  </div>
+</div>
+
+<!-- ─── 3. ADF Test ────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec3">
+  <h3>3. Augmented Dickey-Fuller (ADF) Test</h3>
+  <p>The ADF test tests for a <strong>unit root</strong> in an autoregressive model. A series with a unit root is non-stationary.</p>
+  <div class="math-box">
+    <div class="math-title">ADF Regression Model</div>
+    <div class="math-formula">$$\Delta Y_t = \alpha + \beta t + \gamma Y_{t-1} + \sum_{i=1}^{k} \delta_i \Delta Y_{t-i} + \varepsilon_t$$</div>
+    <div class="math-note">
+      <strong>H₀ (Null):</strong> $\gamma = 0$ - the series has a unit root → non-stationary<br/>
+      <strong>H₁ (Alternative):</strong> $\gamma < 0$ - no unit root → stationary<br/>
+      <strong>Test Statistic:</strong> $\tau = \hat{\gamma} / SE(\hat{\gamma})$ (follows Dickey-Fuller distribution, not standard normal)<br/>
+      <strong>Decision Rule:</strong> Reject H₀ if $\tau <$ critical value or $p$-value $< \alpha = 0.05$<br/>
+      The augmented terms $\sum \delta_i \Delta Y_{t-i}$ account for higher-order autocorrelation (lags selected by AIC).
+    </div>
+  </div>
+</div>
+
+<!-- ─── 4. Differencing ────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec4">
+  <h3>4. Differencing</h3>
+  <p>Differencing is a transformation applied to a non-stationary series to induce stationarity. It removes deterministic trends.</p>
+  <div class="math-box">
+    <div class="math-title">First and Second Order Differences</div>
+    <div class="math-formula">$$\Delta Y_t = Y_t - Y_{t-1} \quad \text{(First difference)}$$</div>
+    <div class="math-formula">$$\Delta^2 Y_t = \Delta Y_t - \Delta Y_{t-1} = Y_t - 2Y_{t-1} + Y_{t-2} \quad \text{(Second difference)}$$</div>
+    <div class="math-formula">$$\Delta^d Y_t = (1-B)^d Y_t \quad \text{where } B^k Y_t = Y_{t-k}$$</div>
+    <div class="math-note">
+      <strong>Backshift Operator B:</strong> $B Y_t = Y_{t-1}$, $B^2 Y_t = Y_{t-2}$<br/>
+      <strong>d</strong> is the "I" (Integrated) in ARIMA(p, <u>d</u>, q)<br/>
+      <strong>Example:</strong> Random walk $Y_t = Y_{t-1} + \varepsilon_t$ → $\Delta Y_t = \varepsilon_t$ (white noise - stationary!)
+    </div>
+  </div>
+</div>
+
+<!-- ─── 5. AR Model ───────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec5">
+  <h3>5. Autoregressive Model - AR(p)</h3>
+  <p>An AR(p) model expresses $Y_t$ as a linear combination of its <em>p</em> previous values plus a white noise term.</p>
+  <div class="math-box">
+    <div class="math-title">AR(p) Definition</div>
+    <div class="math-formula">$$Y_t = \phi_1 Y_{t-1} + \phi_2 Y_{t-2} + \cdots + \phi_p Y_{t-p} + \varepsilon_t$$</div>
+    <div class="math-formula">$$\phi(B) Y_t = \varepsilon_t \quad \text{where } \phi(B) = 1 - \phi_1 B - \phi_2 B^2 - \cdots - \phi_p B^p$$</div>
+    <div class="math-note">
+      <strong>$\phi_i$</strong> = autoregressive coefficients (estimated by least squares or MLE)<br/>
+      <strong>$\varepsilon_t$</strong> = white noise: $\varepsilon_t \sim WN(0, \sigma^2)$<br/>
+      <strong>Stationarity condition:</strong> All roots of $\phi(z) = 0$ must lie outside the unit circle $|z| > 1$<br/>
+      <strong>Identification:</strong> PACF cuts off sharply at lag $p$ for AR(p) processes<br/>
+      AR(1) Yule-Walker: $\phi_1 = \rho(1)$, AR(2): solve $\begin{pmatrix} 1 & \rho(1) \\ \rho(1) & 1 \end{pmatrix}\begin{pmatrix}\phi_1\\\phi_2\end{pmatrix} = \begin{pmatrix}\rho(1)\\\rho(2)\end{pmatrix}$
+    </div>
+  </div>
+</div>
+
+<!-- ─── 6. MA Model ───────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec6">
+  <h3>6. Moving Average Model - MA(q)</h3>
+  <p>An MA(q) model expresses $Y_t$ as a linear combination of the current and past <em>q</em> white noise (shock) terms.</p>
+  <div class="math-box">
+    <div class="math-title">MA(q) Definition</div>
+    <div class="math-formula">$$Y_t = \varepsilon_t + \theta_1 \varepsilon_{t-1} + \theta_2 \varepsilon_{t-2} + \cdots + \theta_q \varepsilon_{t-q}$$</div>
+    <div class="math-formula">$$Y_t = \theta(B)\varepsilon_t \quad \text{where } \theta(B) = 1 + \theta_1 B + \cdots + \theta_q B^q$$</div>
+    <div class="math-note">
+      <strong>$\theta_j$</strong> = moving average coefficients<br/>
+      <strong>Invertibility condition:</strong> All roots of $\theta(z) = 0$ must lie outside the unit circle<br/>
+      <strong>Autocorrelation:</strong> $\text{Cov}(Y_t, Y_{t-k}) = 0$ for $k > q$ → ACF cuts off at lag $q$<br/>
+      This makes MA(q) always stationary (finite variance regardless of coefficients)<br/>
+      <strong>Identification:</strong> ACF cuts off sharply at lag $q$ for MA(q) processes
+    </div>
+  </div>
+</div>
+
+<!-- ─── 7. ARIMA ──────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec7">
+  <h3>7. ARIMA(p, d, q) Model</h3>
+  <p>ARIMA combines the AR and MA components with differencing to handle non-stationary series. It is the Box-Jenkins methodology.</p>
+  <div class="math-box">
+    <div class="math-title">ARIMA(p, d, q) - General Form</div>
+    <div class="math-formula">$$\phi(B)(1-B)^d Y_t = \theta(B)\varepsilon_t$$</div>
+    <div class="math-formula">$$\text{where:} \quad W_t = \Delta^d Y_t = (1-B)^d Y_t$$</div>
+    <div class="math-formula">$$\phi(B)W_t = \theta(B)\varepsilon_t \quad \text{(ARMA on the differenced series)}$$</div>
+    <div class="math-note">
+      <strong>p</strong> = order of autoregressive part (number of AR lags)<br/>
+      <strong>d</strong> = degree of differencing (makes series stationary)<br/>
+      <strong>q</strong> = order of moving average part (number of MA lags)<br/><br/>
+      <strong>Parameter Estimation:</strong> Maximum Likelihood Estimation (MLE)<br/>
+      $$\hat{\Theta} = \arg\max_\Theta \ln L(\Theta | Y_1, \ldots, Y_n)$$
+      where $\Theta = (\phi_1,\ldots,\phi_p, \theta_1,\ldots,\theta_q, \sigma^2)$<br/><br/>
+      <strong>Model Selection:</strong><br/>
+      $\text{AIC} = -2\ln\hat{L} + 2k$ &emsp; $\text{BIC} = -2\ln\hat{L} + k\ln n$<br/>
+      where $k$ = number of parameters, $n$ = sample size. Minimise AIC/BIC.
+    </div>
+  </div>
+</div>
+
+<!-- ─── 8. ACF ─────────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec8">
+  <h3>8. Autocorrelation Function (ACF)</h3>
+  <p>The ACF measures the linear dependence between $Y_t$ and $Y_{t-k}$ for lag $k$. It is the primary tool for identifying MA order.</p>
+  <div class="math-box">
+    <div class="math-title">ACF Definition and Estimator</div>
+    <div class="math-formula">$$\rho(k) = \frac{\gamma(k)}{\gamma(0)} = \frac{\text{Cov}(Y_t, Y_{t-k})}{\text{Var}(Y_t)}$$</div>
+    <div class="math-formula">$$\hat{\gamma}(k) = \frac{1}{n}\sum_{t=k+1}^n (Y_t - \bar{Y})(Y_{t-k} - \bar{Y})$$</div>
+    <div class="math-formula">$$\hat{\rho}(k) = \frac{\hat{\gamma}(k)}{\hat{\gamma}(0)} \quad \in [-1, 1]$$</div>
+    <div class="math-note">
+      <strong>Bartlett's Formula</strong> (95% confidence bounds): $\pm 1.96/\sqrt{n}$<br/>
+      Lags where $|\hat{\rho}(k)| > 1.96/\sqrt{n}$ are statistically significant at the 5% level.<br/><br/>
+      <strong>Patterns:</strong><br/>
+      • AR(p): ACF decays exponentially or with damped oscillations<br/>
+      • MA(q): ACF has sharp cutoff after lag $q$ (spikes only for $k \leq q$)<br/>
+      • ARMA(p,q): ACF decays exponentially after lag $q$
+    </div>
+  </div>
+</div>
+
+<!-- ─── 9. PACF ────────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec9">
+  <h3>9. Partial Autocorrelation Function (PACF)</h3>
+  <p>PACF measures the correlation between $Y_t$ and $Y_{t-k}$ after removing the linear effects of all intermediate lags $Y_{t-1}, \ldots, Y_{t-k+1}$.</p>
+  <div class="math-box">
+    <div class="math-title">PACF via Projection</div>
+    <div class="math-formula">$$\phi_{kk} = \text{Corr}(Y_t - \hat{Y}_t,\; Y_{t-k} - \hat{Y}_{t-k})$$</div>
+    <div class="math-note">
+      where $\hat{Y}_t$ = projection of $Y_t$ on $\{Y_{t-1}, \ldots, Y_{t-k+1}\}$.<br/><br/>
+      <strong>Yule-Walker Equations</strong> give the PACF via:<br/>
+      $\begin{pmatrix}\gamma(0) & \gamma(1) & \cdots & \gamma(k-1)\\ \vdots & & & \vdots \\ \gamma(k-1) & \cdots & & \gamma(0)\end{pmatrix} \begin{pmatrix}\phi_{k1}\\ \vdots\\ \phi_{kk}\end{pmatrix} = \begin{pmatrix}\gamma(1)\\ \vdots\\ \gamma(k)\end{pmatrix}$<br/><br/>
+      <strong>Patterns:</strong><br/>
+      • AR(p): PACF has sharp cutoff after lag $p$<br/>
+      • MA(q): PACF decays exponentially<br/>
+      • ARMA(p,q): PACF decays after lag $p-q$
+    </div>
+  </div>
+</div>
+
+<!-- ─── 10. MAE ────────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec10">
+  <h3>10. Mean Absolute Error (MAE)</h3>
+  <div class="math-box">
+    <div class="math-title">MAE Definition</div>
+    <div class="math-formula">$$\text{MAE} = \frac{1}{n}\sum_{t=1}^n |Y_t - \hat{Y}_t| = \frac{1}{n}\sum_{t=1}^n |e_t|$$</div>
+    <div class="math-note">
+      <strong>Properties:</strong><br/>
+      • Unit: same as $Y_t$ (demand units)<br/>
+      • Robust to outliers (linear loss function)<br/>
+      • Minimised by the <em>median</em> forecast<br/>
+      • All errors receive equal weight regardless of magnitude
+    </div>
+  </div>
+</div>
+
+<!-- ─── 11. RMSE ───────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec11">
+  <h3>11. Root Mean Squared Error (RMSE)</h3>
+  <div class="math-box">
+    <div class="math-title">RMSE Definition</div>
+    <div class="math-formula">$$\text{RMSE} = \sqrt{\frac{1}{n}\sum_{t=1}^n (Y_t - \hat{Y}_t)^2} = \sqrt{\text{MSE}}$$</div>
+    <div class="math-note">
+      <strong>Properties:</strong><br/>
+      • Unit: same as $Y_t$ (demand units)<br/>
+      • Sensitive to outliers (quadratic loss function)<br/>
+      • Minimised by the <em>mean</em> forecast<br/>
+      • Always: $\text{RMSE} \geq \text{MAE}$ (by Cauchy-Schwarz inequality)<br/>
+      • $\text{RMSE} = \text{MAE}$ only when all forecast errors are equal in magnitude
+    </div>
+  </div>
+</div>
+
+<!-- ─── 12. MAPE ───────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec12">
+  <h3>12. Mean Absolute Percentage Error (MAPE)</h3>
+  <div class="math-box">
+    <div class="math-title">MAPE Definition</div>
+    <div class="math-formula">$$\text{MAPE} = \frac{100\%}{n}\sum_{t=1}^n \left|\frac{Y_t - \hat{Y}_t}{Y_t}\right|$$</div>
+    <div class="math-note">
+      <strong>Interpretation Guide:</strong><br/>
+      MAPE &lt; 10%: Highly Accurate | 10-20%: Good | 20-50%: Reasonable | &gt;50%: Inaccurate<br/><br/>
+      <strong>Limitation:</strong> Undefined when $Y_t = 0$; asymmetric (penalises positive errors more)<br/>
+      <strong>Advantage:</strong> Scale-free - allows comparison across different demand series
+    </div>
+  </div>
+</div>
+
+<!-- ─── 13. EOQ ────────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec13">
+  <h3>13. Economic Order Quantity (EOQ)</h3>
+  <p>The EOQ model minimises total annual inventory cost by finding the optimal order quantity $Q^*$.</p>
+  <div class="math-box">
+    <div class="math-title">EOQ Derivation - Wilson's Formula (1913)</div>
+    <div class="math-formula">$$\text{Total Cost}(Q) = \underbrace{\frac{D}{Q} \cdot S}_{\text{Annual Ordering Cost}} + \underbrace{\frac{Q}{2} \cdot H}_{\text{Annual Holding Cost}}$$</div>
+    <div class="math-formula">$$\frac{d(\text{TC})}{dQ} = -\frac{DS}{Q^2} + \frac{H}{2} = 0$$</div>
+    <div class="math-formula">$$Q^* = \sqrt{\frac{2DS}{H}}$$</div>
+    <div class="math-note">
+      <strong>Variables:</strong><br/>
+      $D$ = Annual demand (units/year) &emsp; $S$ = Ordering cost per order (₹)<br/>
+      $H$ = Holding cost per unit per year (₹) &emsp; $Q^*$ = Optimal order quantity<br/><br/>
+      <strong>Second-order condition:</strong> $\frac{d^2(\text{TC})}{dQ^2} = \frac{2DS}{Q^3} > 0$ → confirms this is a minimum<br/>
+      <strong>Minimum Total Cost:</strong> $\text{TC}^* = \sqrt{2DSH}$
+    </div>
+  </div>
+</div>
+
+<!-- ─── 14. Safety Stock ───────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec14">
+  <h3>14. Safety Stock</h3>
+  <p>Safety stock is a buffer maintained to protect against demand variability during the lead time.</p>
+  <div class="math-box">
+    <div class="math-title">Safety Stock Formula</div>
+    <div class="math-formula">$$\text{SS} = Z_\alpha \cdot \sigma_{LT}$$</div>
+    <div class="math-formula">$$\sigma_{LT} = \sigma_d \cdot \sqrt{LT} \quad \text{(demand std dev over lead time)}$$</div>
+    <div class="math-formula">$$\therefore \text{SS} = Z_\alpha \cdot \sigma_d \cdot \sqrt{LT}$$</div>
+    <div class="math-note">
+      <strong>Derivation:</strong> If $D_i \sim \mathcal{N}(\mu_d, \sigma_d^2)$ are i.i.d. daily demands,<br/>
+      Total lead time demand: $D_{LT} = \sum_{i=1}^{LT} D_i \sim \mathcal{N}(LT \cdot \mu_d,\; LT \cdot \sigma_d^2)$<br/><br/>
+      We set safety stock so that: $P(D_{LT} \leq \text{ROP}) = \text{Service Level}$<br/>
+      $\Rightarrow$ SS = $Z_\alpha \cdot \sigma_{LT}$ where $Z_\alpha = \Phi^{-1}(\text{SL})$<br/><br/>
+      <strong>Z-score table:</strong> SL 90% → Z=1.282 | SL 95% → Z=1.645 | SL 99% → Z=2.326
+    </div>
+  </div>
+</div>
+
+<!-- ─── 15. ROP ────────────────────────────────────────────── -->
+<div class="derivation-section fade-in" id="sec15">
+  <h3>15. Reorder Point (ROP)</h3>
+  <p>The ROP is the inventory level at which a replenishment order should be triggered to avoid stockout.</p>
+  <div class="math-box">
+    <div class="math-title">ROP Formula</div>
+    <div class="math-formula">$$\text{ROP} = \bar{d} \cdot LT + \text{SS}$$</div>
+    <div class="math-formula">$$= \bar{d} \cdot LT + Z_\alpha \cdot \sigma_d \cdot \sqrt{LT}$$</div>
+    <div class="math-note">
+      <strong>Interpretation:</strong><br/>
+      $\bar{d} \cdot LT$ = Expected demand during lead time (cycle stock component)<br/>
+      $Z_\alpha \cdot \sigma_d \cdot \sqrt{LT}$ = Buffer for demand uncertainty (safety stock component)<br/><br/>
+      <strong>Decision Rule:</strong> When $\text{Inventory} \leq \text{ROP}$, immediately place an order of size $Q^*$ (EOQ).<br/><br/>
+      <strong>Complete Policy:</strong> $(Q^*, \text{ROP})$ policy - orders of fixed size $Q^*$ placed when inventory hits $\text{ROP}$.
+    </div>
+  </div>
+</div>
+
+<!-- Footer note -->
+<div class="alert-custom alert-info fade-in mt-2">
+  <div>
+    <strong><i class="fa-solid fa-thumbtack icon-primary"></i> For Your Viva:</strong> All mathematical derivations on this page use rigorous notation consistent with standard textbooks. Key references: Box &amp; Jenkins (1976), Montgomery et al., Wilson (1913). The ARIMA methodology follows the three-stage Box-Jenkins iterative procedure: <em>Identification → Estimation → Diagnostic Checking</em>.
+  </div>
+</div>
+{% endblock %}

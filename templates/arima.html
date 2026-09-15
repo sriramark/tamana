@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}ARIMA Model - SmartInventory{% endblock %}
+{% block breadcrumb %}ARIMA Model{% endblock %}
+
+{% block content %}
+{% if current_category %}
+<div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
+    <i class="fa-solid fa-filter"></i>
+    <span>
+        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
+    </span>
+</div>
+{% endif %}
+
+<div class="page-header fade-in">
+  <h1 class="page-title"><i class="fa-solid fa-robot icon-primary"></i> ARIMA Model</h1>
+  <p class="page-subtitle">Fit ARIMA(p,d,q) to the demand series. Inspect model summary, coefficients, AIC/BIC, and residual diagnostics.</p>
+</div>
+
+{% if error %}
+<div class="alert-custom alert-danger mb-4 fade-in"><i class="fa-solid fa-circle-xmark icon-primary"></i> {{ error }}</div>
+{% endif %}
+
+<!-- Order Selection Form -->
+<div class="card mb-4 fade-in">
+  <div class="card-header">
+    <span class="card-title"><i class="fa-solid fa-gear icon-primary"></i> ARIMA Order Selection</span>
+  </div>
+  <div class="card-body">
+    <div class="math-box mb-3">
+      <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> ARIMA(p,d,q) Model Equation</div>
+      <div class="math-formula">$$\phi(B)(1-B)^d Y_t = \theta(B)\varepsilon_t$$</div>
+      <div class="math-note">
+        $\phi(B) = 1 - \phi_1 B - \phi_2 B^2 - \cdots - \phi_p B^p$ &nbsp;(AR polynomial)<br/>
+        $\theta(B) = 1 + \theta_1 B + \theta_2 B^2 + \cdots + \theta_q B^q$ &nbsp;(MA polynomial)<br/>
+        $\varepsilon_t \sim WN(0, \sigma^2)$ &nbsp;(White Noise)
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('arima') }}" id="arimaOrderForm" data-loading>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label-custom">p - AR Order</label>
+          <input type="number" id="p" name="p" value="{{ p }}" min="0" max="5" class="form-control-custom" required/>
+          <div class="kpi-hint">PACF cutoff lag</div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-custom">d - Differencing</label>
+          <input type="number" id="d" name="d" value="{{ d }}" min="0" max="2" class="form-control-custom" required/>
+          <div class="kpi-hint">From ADF test</div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-custom">q - MA Order</label>
+          <input type="number" id="q" name="q" value="{{ q }}" min="0" max="5" class="form-control-custom" required/>
+          <div class="kpi-hint">ACF cutoff lag</div>
+        </div>
+        <div class="col-md-4">
+          <button type="submit" class="btn-primary-custom w-100" style="justify-content:center;">
+            <i class="fa-solid fa-microchip"></i> Fit ARIMA Model
+          </button>
+        </div>
+        <div class="col-md-2">
+          {% if model_info %}
+          <div class="order-badge" style="justify-content:center;">ARIMA({{ p }},{{ d }},{{ q }})</div>
+          {% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if model_info %}
+<!-- Model Results -->
+<div class="row g-4 mb-4">
+  <!-- AIC / BIC / Info -->
+  <div class="col-md-4">
+    <div class="card h-100 fade-in fade-in-1">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-chart-column icon-primary"></i> Information Criteria</span>
+      </div>
+      <div class="card-body">
+        <div class="stat-card mb-3" style="flex-direction:column;text-align:center;padding:1rem;">
+          <div class="stat-value" style="font-size:1.8rem;">{{ model_info.aic }}</div>
+          <div class="stat-label">AIC = −2ln(L̂) + 2k</div>
+        </div>
+        <div class="stat-card mb-3" style="flex-direction:column;text-align:center;padding:1rem;">
+          <div class="stat-value" style="font-size:1.8rem;">{{ model_info.bic }}</div>
+          <div class="stat-label">BIC = −2ln(L̂) + k·ln(n)</div>
+        </div>
+        <div class="stat-card" style="flex-direction:column;text-align:center;padding:1rem;">
+          <div class="stat-value" style="font-size:1.8rem;">{{ model_info.hqic }}</div>
+          <div class="stat-label">HQIC</div>
+        </div>
+        <div class="math-note mt-3" style="font-size:0.75rem;color:var(--text-muted);line-height:1.6;">
+          <strong>Lower values = better model.</strong><br/>
+          AIC: trades off fit vs. complexity<br/>
+          BIC: penalises extra parameters more heavily<br/>
+          Sample size: n = {{ model_info.nobs }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coefficients -->
+  <div class="col-md-8">
+    <div class="card fade-in fade-in-1">
+      <div class="card-header">
+        <span class="card-title"><i class="fa-solid fa-clipboard-list icon-primary"></i> Model Coefficients</span>
+        <span class="order-badge">ARIMA({{ p }},{{ d }},{{ q }})</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="table-dark-custom">
+          <thead>
+            <tr><th>Parameter</th><th>Estimate</th><th>Interpretation</th></tr>
+          </thead>
+          <tbody>
+            {% for name, val in model_info.params.items() %}
+            <tr>
+              <td class="mono">{{ name }}</td>
+              <td class="mono">{{ val }}</td>
+              <td style="font-size:0.78rem;color:var(--text-muted);">
+                {% if 'ar.' in name %}AR coefficient φ - influence of past Y values
+                {% elif 'ma.' in name %}MA coefficient θ - influence of past errors ε
+                {% elif 'sigma' in name %}σ² = {{ val }} → σ = {{ "%.4f"|format(val**0.5) }} (error std dev)
+                {% elif 'const' in name or 'intercept' in name %}Model intercept / drift constant
+                {% else %}Model parameter
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="math-box mt-3 fade-in fade-in-2">
+      <div class="math-title"><i class="fa-solid fa-calculator icon-primary"></i> Fitted ARIMA Equation</div>
+      <div class="math-formula" style="font-size:0.9rem;">
+        $$\hat{Y}_t = \sum_{i=1}^{p}\phi_i Y_{t-i} + \sum_{j=1}^{q}\theta_j \varepsilon_{t-j} + \varepsilon_t$$
+      </div>
+      <div class="math-note">
+        The model uses the last {{ p }} demand observations (AR part) and the last {{ q }} forecast errors (MA part) to predict the next demand value.
+        $\sigma^2 = {{ model_info.sigma2 }}$ is the estimated error variance.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Residual Diagnostics -->
+<div class="card mb-4 fade-in fade-in-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fa-solid fa-microscope icon-primary"></i> Residual Diagnostics</span>
+    <button class="btn-download" data-download-img="plotResiduals">
+      <i class="fa-solid fa-download"></i> Download
+    </button>
+  </div>
+  <div class="card-body">
+    <div class="math-box mb-3">
+      <div class="math-title"><i class="fa-solid fa-ruler-combined icon-primary"></i> What are Residuals?</div>
+      <div class="math-formula">$$\hat{\varepsilon}_t = Y_t - \hat{Y}_t$$</div>
+      <div class="math-note">
+        Residuals $\hat{\varepsilon}_t$ are the differences between actual and fitted values. A well-fitted ARIMA model produces residuals that behave like <strong>White Noise</strong>:
+        $\varepsilon_t \sim \mathcal{N}(0, \sigma^2)$, i.e., zero mean, constant variance, and no autocorrelation.
+        <br/><br/>
+        <strong>Diagnostics to check:</strong><br/>
+        1. <em>Residuals vs Time</em> - should look random (no pattern)<br/>
+        2. <em>Histogram</em> - should be bell-shaped (normal distribution)<br/>
+        3. <em>Q-Q Plot</em> - points should lie on the 45° line (normality)
+      </div>
+    </div>
+    <img id="plotResiduals" src="data:image/png;base64,{{ plot_res }}" alt="Residual Diagnostics" style="width:100%;border-radius:var(--radius-sm);"/>
+  </div>
+</div>
+
+<div style="text-align:right;" class="fade-in fade-in-4">
+  <a href="{{ url_for('forecast') }}" class="btn-primary-custom">
+    Generate Forecast <i class="fa-solid fa-arrow-right"></i>
+  </a>
+</div>
+{% endif %}
+{% endblock %}
