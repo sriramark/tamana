@@ -1,0 +1,28 @@
+# Render blueprint. With this file in the repo root you can deploy via
+# Render Dashboard -> New -> Blueprint, and it configures everything below
+# automatically instead of you filling the fields in by hand.
+services:
+  - type: web
+    name: smart-inventory-arima
+    runtime: python
+    plan: free
+    region: singapore          # closest Render region to India; change if you prefer
+    buildCommand: pip install -r requirements.txt
+    # One worker: each gunicorn worker loads its own copy of pandas, statsmodels
+    # and matplotlib, which is roughly 250 MB. Two workers would exceed the
+    # 512 MB free-tier limit and the process would be killed.
+    #
+    # Fitting an ARIMA model and rendering charts takes a few seconds, and on
+    # the free plan the service also cold-starts after idling, so the default
+    # 30 s worker timeout is raised to 120 s.
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true    # Render generates a strong random value
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      # matplotlib needs a writable cache directory; the default location is
+      # not writable on Render, which prints a warning on every chart render.
+      - key: MPLCONFIGDIR
+        value: /tmp/matplotlib

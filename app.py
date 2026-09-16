@@ -30,6 +30,7 @@ Route map
 """
 
 import os
+import secrets
 import traceback
 
 import numpy as np
@@ -57,11 +58,15 @@ from ml.visualization import (
 )
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "smart_inventory_key_dev_only")
+
+# Sessions only hold the selected category and ARIMA order, but the key still
+# must not be a published constant in production: anyone could forge a cookie.
+# Render provides SECRET_KEY; locally we fall back to a per-process random key,
+# which simply means sessions reset when the dev server restarts.
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 dataset_dir = os.path.join(base_dir, "dataset")
-
 
 os.makedirs(dataset_dir, exist_ok=True)
 
@@ -625,4 +630,6 @@ def conclusion():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Local development only. In production (Render) gunicorn imports the `app`
+    # object directly and this block never runs, so debug stays off there.
+    app.run(debug=True, port=int(os.environ.get("PORT", 5000)))
