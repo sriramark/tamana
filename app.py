@@ -15,7 +15,6 @@ Route map
 ---------
 /                 project overview
 /dataset          raw data, schema, missing values, preview
-/upload           use your own Date,Demand CSV instead of the Kaggle data
 /analysis         demand over time + descriptive statistics + ADF test
 /differencing     making the series stationary (choosing d)
 /acf-pacf         reading ACF/PACF to choose p and q
@@ -31,19 +30,17 @@ Route map
 """
 
 import os
-import io
 import traceback
 
 import numpy as np
 import pandas as pd
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, flash, send_from_directory
+    url_for, session, flash
 )
-from werkzeug.utils import secure_filename
 
 from ml.preprocess import (
-    download_kaggle_dataset, load_blinkit_merged_df, load_simple_csv,
+    download_kaggle_dataset, load_blinkit_merged_df,
     get_dataset_metadata, build_time_series, get_statistics, get_preview
 )
 from ml.stationarity import adf_test, difference_series, suggest_d
@@ -63,13 +60,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "smart_inventory_key_dev_only")
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-upload_dir = os.path.join(base_dir, "uploads")
 dataset_dir = os.path.join(base_dir, "dataset")
 
-app.config["UPLOAD_FOLDER"] = upload_dir
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024   # 16 MB cap on uploads
 
-os.makedirs(upload_dir, exist_ok=True)
 os.makedirs(dataset_dir, exist_ok=True)
 
 # How many periods ahead every page forecasts. Kept in one place so the
@@ -87,20 +80,8 @@ _load_error = None
 
 
 def get_master_df():
-    """Return the merged Blinkit dataframe, or an uploaded CSV if the user
-    supplied one on the /upload page. Returns None when no data is available."""
+    """Return the merged Blinkit dataframe, or None when it cannot be loaded."""
     global _data_cache, _load_error
-
-    # A user-uploaded file always takes priority over the bundled dataset.
-    uploaded = session.get("uploaded_file")
-    if uploaded:
-        path = os.path.join(upload_dir, uploaded)
-        if os.path.exists(path):
-            try:
-                return load_simple_csv(path)
-            except Exception as err:
-                _load_error = f"Uploaded file '{uploaded}' could not be read: {err}"
-                session.pop("uploaded_file", None)
 
     if _data_cache is None:
         try:
@@ -155,7 +136,7 @@ _model_cache = {}
 def get_fit(series, order):
     """Fit ARIMA(order) on *series*, reusing a cached fit when possible."""
     key = (session.get("selected_category", "All Categories"),
-           session.get("uploaded_file"), order, len(series), float(series.sum()))
+           order, len(series), float(series.sum()))
     if key not in _model_cache:
         _model_cache[key] = fit_arima(series, order)
         if len(_model_cache) > 24:          # keep the cache small
@@ -174,7 +155,6 @@ def inject_context():
         "current_order_text": "({}, {}, {})".format(
             session.get("arima_p", "-"), session.get("arima_d", "-"), session.get("arima_q", "-")
         ) if "arima_p" in session else None,
-        "current_upload": session.get("uploaded_file"),
     }
 
 
@@ -260,67 +240,6 @@ def dataset():
         "dataset.html", active="dataset",
         metadata=meta, preview=preview, stats=stats, error=None,
     )
-
-
-@app.route("/upload", methods=["GET", "POST"])
-def upload():
-    """Optional: run the whole pipeline on the user's own CSV.
-
-    The file must have a date column and a numeric demand column - see
-    dataset/sample_inventory.csv for the expected shape."""
-    error = None
-    preview = []
-
-    if request.method == "POST":
-        file = request.files.get("csvFile")
-        if not file or not file.filename:
-            error = "No file selected."
-        elif not file.filename.lower().endswith(".csv"):
-            error = "Only .csv files are accepted."
-        else:
-            fname = secure_filename(file.filename)
-            path = os.path.join(upload_dir, fname)
-            file.save(path)
-            try:
-                df = load_simple_csv(path)                  # validates the shape
-                build_time_series(df, freq="ME")            # validates it is usable
-                session["uploaded_file"] = fname
-                session.pop("selected_category", None)      # reset downstream state
-                _model_cache.clear()
-                flash(f"Loaded '{fname}' - {len(df)} rows. All pages now use this file.", "success")
-                return redirect(url_for("analysis"))
-            except Exception as err:
-                os.remove(path)
-                error = f"Could not use this file: {err}"
-
-    # Show the currently active file, if any.
-    active_file = session.get("uploaded_file")
-    if active_file:
-        try:
-            preview = get_preview(load_simple_csv(os.path.join(upload_dir, active_file)), 10)
-        except Exception:
-            preview = []
-
-    return render_template(
-        "upload.html", active="upload",
-        error=error, preview=preview, active_file=active_file,
-    )
-
-
-@app.route("/use-builtin-dataset")
-def use_builtin_dataset():
-    """Switch back from an uploaded CSV to the bundled Kaggle dataset."""
-    session.pop("uploaded_file", None)
-    session.pop("selected_category", None)
-    _model_cache.clear()
-    flash("Switched back to the Blinkit dataset.", "info")
-    return redirect(url_for("dataset"))
-
-
-@app.route("/download-sample")
-def download_sample():
-    """Download a correctly formatted example CSV."""
-    return send_from_directory(dataset_dir, "sample_inventory.csv", as_attachment=True)
 
 
 # ---------------------------------------------------------------------------
@@ -703,12 +622,6 @@ def math_derivation():
 @app.route("/conclusion")
 def conclusion():
     return render_template("conclusion.html", active="conclusion")
-
-
-@app.errorhandler(413)
-def too_large(_err):
-    flash("That file is larger than the 16 MB upload limit.", "danger")
-    return redirect(url_for("upload"))
 
 
 if __name__ == "__main__":

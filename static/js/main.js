@@ -29,42 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  const dropZone = document.getElementById("dropZone");
-  const fileInput = document.getElementById("csvFile");
-
-  if (dropZone && fileInput) {
-    ["dragenter", "dragover"].forEach(evt => {
-      dropZone.addEventListener(evt, e => {
-        e.preventDefault();
-        dropZone.classList.add("dragover");
-      });
-    });
-    ["dragleave", "drop"].forEach(evt => {
-      dropZone.addEventListener(evt, e => {
-        e.preventDefault();
-        dropZone.classList.remove("dragover");
-      });
-    });
-    dropZone.addEventListener("drop", e => {
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        fileInput.files = files;
-        updateFileLabel(files[0].name);
-      }
-    });
-    dropZone.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", () => {
-      if (fileInput.files.length > 0) updateFileLabel(fileInput.files[0].name);
-    });
-  }
-
-  function updateFileLabel(name) {
-    const label = document.getElementById("fileLabel");
-    if (label) label.textContent = name;
-    const hint = document.getElementById("dropHint");
-    if (hint) hint.style.display = "none";
-  }
-
   document.querySelectorAll("form[data-loading]").forEach(form => {
     form.addEventListener("submit", () => {
       const btn = form.querySelector("button[type=submit]");

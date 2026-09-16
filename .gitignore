@@ -1,12 +1,8 @@
 __pycache__/
-*.py[cod]
 .venv/
+*.py[cod]
 venv/
 env/
-
-# user uploads are runtime data, not source
-uploads/*
-!uploads/.gitkeep
 
 .vscode/
 .idea/

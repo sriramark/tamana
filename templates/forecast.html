@@ -8,7 +8,7 @@
 <div class="alert alert-info mb-4" style="padding:0.7rem 1.1rem;font-size:0.85rem;">
     <i class="fa-solid fa-filter"></i>
     <span>
-        Working on <strong>{{ current_category }}</strong>{% if current_upload %} from uploaded file <strong>{{ current_upload }}</strong>{% endif %}{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
+        Working on <strong>{{ current_category }}</strong>{% if current_order_text %} &middot; ARIMA<strong>{{ current_order_text }}</strong>{% endif %}.
         Change it on the <a href="{{ url_for('analysis') }}">Demand Analysis</a> page.
     </span>
 </div>

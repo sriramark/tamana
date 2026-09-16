@@ -1072,22 +1072,6 @@ body {
 .alert-custom.alert-danger  { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.3);   color: var(--state-danger); }
 .alert-custom.alert-info    { background: rgba(59,130,246,0.1);  border-color: rgba(59,130,246,0.3);  color: var(--accent-text); }
 
-/* --- upload drop zone --------------------------------------------------- */
-.upload-zone {
-  border: 2px dashed var(--border-hover);
-  border-radius: var(--radius);
-  padding: 2.5rem 1.5rem;
-  text-align: center;
-  cursor: pointer;
-  background: var(--bg-secondary);
-  transition: var(--transition);
-}
-.upload-zone:hover, .upload-zone.dragover {
-  border-color: var(--accent-blue);
-  background: rgba(59,130,246,0.06);
-}
-.upload-icon { font-size: 2.5rem; color: var(--accent-blue); margin-bottom: 0.75rem; }
-
 /* --- dark data table ---------------------------------------------------- */
 .table-dark-custom {
   width: 100%;

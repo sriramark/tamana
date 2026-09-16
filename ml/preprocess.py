@@ -89,51 +89,6 @@ def load_blinkit_merged_df(target_dir: str = None) -> pd.DataFrame:
     df_merged = df_merged.dropna(subset=["order_date"]).sort_values("order_date").reset_index(drop=True)
     return df_merged
 
-def load_simple_csv(path: str) -> pd.DataFrame:
-    """Load a user-supplied two-column CSV (date + demand) into the same shape
-    the rest of the pipeline expects.
-
-    The column names are detected case-insensitively, so ``Date,Demand``,
-    ``order_date,quantity`` and ``month,units_sold`` all work. The result carries
-    the same columns as the merged Blinkit frame, which means every downstream
-    function (metadata, time series, statistics, ARIMA) works unchanged.
-    """
-    df = pd.read_csv(path)
-    if df.empty:
-        raise ValueError("The file contains no rows.")
-
-    lower = {c.strip().lower(): c for c in df.columns}
-
-    date_col = next((lower[k] for k in ("date", "order_date", "month", "period", "ds") if k in lower), None)
-    qty_col = next((lower[k] for k in ("demand", "quantity", "qty", "sales", "units", "units_sold", "y") if k in lower), None)
-
-    # Fall back to positional columns for an unnamed 2-column file.
-    if date_col is None or qty_col is None:
-        if len(df.columns) < 2:
-            raise ValueError("Expected at least 2 columns: a date column and a demand column.")
-        date_col = date_col or df.columns[0]
-        qty_col = qty_col or df.columns[1]
-
-    out = pd.DataFrame()
-    out["order_date"] = pd.to_datetime(df[date_col], errors="coerce")
-    out["quantity"] = pd.to_numeric(df[qty_col], errors="coerce")
-
-    out = out.dropna(subset=["order_date", "quantity"])
-    if out.empty:
-        raise ValueError(
-            f"Could not parse any rows. Check that '{date_col}' holds dates "
-            f"and '{qty_col}' holds numbers."
-        )
-
-    # Optional columns, filled with neutral defaults so the dashboard still renders.
-    out["category"] = df[lower["category"]].values[: len(out)] if "category" in lower else "Uploaded Data"
-    out["product_name"] = df[lower["product_name"]].values[: len(out)] if "product_name" in lower else "Uploaded Series"
-    out["unit_price"] = pd.to_numeric(df[lower["unit_price"]], errors="coerce").fillna(0) if "unit_price" in lower else 0.0
-    out["total_sales"] = out["quantity"] * out["unit_price"]
-
-    return out.sort_values("order_date").reset_index(drop=True)
-
-
 def get_dataset_metadata(df: pd.DataFrame) -> dict:
     total_rows = len(df)
     total_cols = len(df.columns)

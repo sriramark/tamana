@@ -62,12 +62,6 @@ These three files ship in `dataset/`, so **the app runs offline with no Kaggle a
 After merging: **5,000 transactions**, 51 products, 11 categories,
 **16 Mar 2023 → 04 Nov 2024**, aggregated to **19 complete monthly periods**.
 
-### Using your own data
-
-The **Upload Your CSV** page accepts a two-column file (date + demand); see
-`dataset/sample_inventory.csv` for the expected shape. Column names are detected
-case-insensitively (`Date`/`order_date`/`month`, `Demand`/`quantity`/`sales`/…).
-
 ---
 
 ## Project structure
@@ -84,8 +78,7 @@ ml/
 templates/              Jinja2 pages (MathJax for formulas)
 static/css/style.css    dark dashboard theme
 static/js/main.js       sidebar, chart download, form validation
-dataset/                bundled CSVs + sample upload file
-uploads/                user-uploaded CSVs (created at runtime)
+dataset/                bundled source CSVs
 ```
 
 ---
@@ -96,7 +89,6 @@ uploads/                user-uploaded CSVs (created at runtime)
 |---|---|---|
 | `/` | — | Project overview |
 | `/dataset` | Data | Schema, missing values, date range, preview |
-| `/upload` | Data | Run the pipeline on your own CSV |
 | `/analysis` | Preprocessing | Demand over time, descriptive statistics, ADF test |
 | `/differencing` | Stationarity | Iterative ADF testing to choose **d** |
 | `/acf-pacf` | Identification | ACF/PACF plots to choose **p** and **q** |
