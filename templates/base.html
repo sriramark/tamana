@@ -71,12 +71,6 @@
                     </a>
                 </div>
                 <div class="nav-item">
-                    <a href="{{ url_for('arima') }}" class="nav-link {% if active == 'arima' %}active{% endif %}">
-                        <i class="fa-solid fa-microchip nav-icon"></i>
-                        <span>Fit ARIMA Model</span>
-                    </a>
-                </div>
-                <div class="nav-item">
                     <a href="{{ url_for('forecast') }}" class="nav-link {% if active == 'forecast' %}active{% endif %}">
                         <i class="fa-solid fa-wand-magic-sparkles nav-icon"></i>
                         <span>ARIMA Forecast</span>

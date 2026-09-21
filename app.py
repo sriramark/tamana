@@ -18,8 +18,8 @@ Route map
 /analysis         demand over time + descriptive statistics + ADF test
 /differencing     making the series stationary (choosing d)
 /acf-pacf         reading ACF/PACF to choose p and q
-/arima            fit the model, coefficients, AIC/BIC, residual diagnostics
-/forecast         6-period ahead demand forecast with 95% confidence interval
+/forecast         fit the model and produce a 6-period ahead demand forecast
+                  with a 95% confidence interval
 /evaluation       forecast accuracy: MAE, RMSE, MAPE
 /inventory        safety stock, reorder point, low-stock alert, EOQ, recommendation
 /case-study       festive demand-spike scenario
@@ -54,7 +54,7 @@ from ml.inventory import (
 )
 from ml.visualization import (
     plot_time_series, plot_differenced, plot_acf_pacf, plot_forecast,
-    plot_residuals, plot_evaluation, plot_inventory_chart
+    plot_evaluation, plot_inventory_chart
 )
 
 app = Flask(__name__)
@@ -343,47 +343,11 @@ def acf_pacf():
 
 
 # ---------------------------------------------------------------------------
-# Stage 3 - ARIMA model
+# Stage 3 - Demand forecast
+#
+# The order form and the fitted-model summary live on /forecast, so there is no
+# separate model-fitting page.
 # ---------------------------------------------------------------------------
-@app.route("/arima", methods=["GET", "POST"])
-def arima():
-    """Fit ARIMA(p,d,q) and show coefficients, information criteria and
-    residual diagnostics."""
-    df, bail = require_data()
-    if bail:
-        return bail
-
-    ts_df, _ = current_series(df)
-    series = ts_df["Demand"]
-
-    p, d, q = current_order(series)
-    if request.method == "POST":
-        try:
-            p = max(0, min(5, int(request.form.get("p", p))))
-            d = max(0, min(2, int(request.form.get("d", d))))
-            q = max(0, min(5, int(request.form.get("q", q))))
-        except (TypeError, ValueError):
-            flash("ARIMA order must be whole numbers.", "warning")
-    session["arima_p"], session["arima_d"], session["arima_q"] = p, d, q
-
-    model_info = None
-    plot_res = None
-    error = None
-    try:
-        res = get_fit(series, (p, d, q))
-        model_info = get_model_summary(res)
-        plot_res = plot_residuals(model_info["residuals"])
-    except Exception as err:
-        error = f"Could not fit ARIMA({p},{d},{q}): {err}"
-
-    return render_template(
-        "arima.html", active="arima",
-        p=p, d=d, q=q, model_info=model_info, plot_res=plot_res, error=error,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Stage 4 - Demand forecast
 # ---------------------------------------------------------------------------
 @app.route("/forecast", methods=["GET", "POST"])
 def forecast():

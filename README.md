@@ -92,8 +92,7 @@ dataset/                bundled source CSVs
 | `/analysis` | Preprocessing | Demand over time, descriptive statistics, ADF test |
 | `/differencing` | Stationarity | Iterative ADF testing to choose **d** |
 | `/acf-pacf` | Identification | ACF/PACF plots to choose **p** and **q** |
-| `/arima` | Model | Coefficients, AIC/BIC/HQIC, residual diagnostics (Q-Q, histogram) |
-| `/forecast` | Forecast | 6-period forecast with 95% confidence interval |
+| `/forecast` | Model & Forecast | Order selection, coefficients, AIC/BIC, 6-period forecast with 95% confidence interval |
 | `/evaluation` | Accuracy | MAE, RMSE, MAPE — in-sample and held-out |
 | `/inventory` | Inventory | Safety stock, ROP, EOQ, low-stock alert, reorder recommendation |
 | `/case-study` | Reference | Festive demand-spike scenario |

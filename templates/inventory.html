@@ -13,7 +13,7 @@
         {% if inv.forecast_failed %}
             The ARIMA model could not be fitted ({{ inv.forecast_failed }}), so these figures fall back to the
             <strong>historical average</strong>. Adjust the order on the
-            <a href="{{ url_for('arima') }}">Fit ARIMA</a> page.
+            <a href="{{ url_for('forecast') }}">Forecast</a> page.
         {% else %}
             Demand below is driven by the <strong>ARIMA{{ inv.order }} forecast</strong> for
             <strong>{{ inv.category }}</strong> &mdash; next period

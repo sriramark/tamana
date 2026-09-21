@@ -34,7 +34,7 @@
         {{ order_info.explanation }}
       </p>
     </div>
-    <a href="{{ url_for('arima') }}" class="btn-primary-custom">
+    <a href="{{ url_for('forecast') }}" class="btn-primary-custom">
       Fit ARIMA Model <i class="fa-solid fa-arrow-right"></i>
     </a>
   </div>
@@ -143,7 +143,7 @@
 </div>
 
 <div style="text-align:right;">
-  <a href="{{ url_for('arima') }}" class="btn-primary-custom">
+  <a href="{{ url_for('forecast') }}" class="btn-primary-custom">
     Fit ARIMA({{ order_info.p }}, {{ order_info.d }}, {{ order_info.q }}) <i class="fa-solid fa-arrow-right"></i>
   </a>
 </div>
